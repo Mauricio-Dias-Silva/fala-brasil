@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FalaBrasil | Aura Messenger</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="mobile-frame">
+        <!-- STATUS BAR (SIMULATED) -->
+        <div class="status-bar">
+            <div class="time">19:58</div>
+            <div class="icons">
+                <i class="ph ph-wifi-high"></i>
+                <i class="ph ph-battery-full"></i>
+            </div>
+        </div>
+
+        <!-- ZERO RATING BANNER -->
+        <div class="zero-rating-banner">
+            <i class="ph ph-shield-check"></i>
+            Conectado via Rede Aura: <span>Zero-Rating Ativo</span>
+        </div>
+
+        <!-- APP HEADER -->
+        <header>
+            <div class="header-top">
+                <h1>FalaBrasil</h1>
+                <div class="header-icons">
+                    <i class="ph ph-camera"></i>
+                    <i class="ph ph-magnifying-glass"></i>
+                    <i class="ph ph-dots-three-vertical"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- CHAT LIST AREA -->
+        <main id="chat-list">
+            <div class="chat-item">
+                <div class="avatar" style="background-image: url('https://i.pravatar.cc/150?u=mauricio');"></div>
+                <div class="chat-info">
+                    <div class="chat-title">
+                        <span class="name">Maurício (Liderança)</span>
+                        <span class="time">19:55</span>
+                    </div>
+                    <div class="chat-msg">O processamento da Fazenda Piauí-01 está em 100%! 🚀</div>
+                </div>
+            </div>
+
+            <div class="chat-item">
+                <div class="avatar" style="background-image: url('https://i.pravatar.cc/150?u=boulos');"></div>
+                <div class="chat-info">
+                    <div class="chat-title">
+                        <span class="name">Gabinete Casa Civil</span>
+                        <span class="time">19:42</span>
+                    </div>
+                    <div class="chat-msg">Confirmado: Reunião para o programa Brasil Hiperconectado...</div>
+                </div>
+                <div class="unread-badge">2</div>
+            </div>
+
+            <div class="chat-item">
+                <div class="avatar" style="background-image: url('https://i.pravatar.cc/150?u=edu');"></div>
+                <div class="chat-info">
+                    <div class="chat-title">
+                        <span class="name">EduFuturo Suporte</span>
+                        <span class="time">15:10</span>
+                    </div>
+                    <div class="chat-msg">Novo curso de IA Soberana disponível! Clique aqui.</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- CHAT INPUT (NEW) -->
+        <div id="chat-input-area" style="display: none;">
+            <div class="input-container">
+                <i class="ph ph-plus-circle"></i>
+                <input type="text" placeholder="Mensagem...">
+                <i class="ph ph-currency-circle-dollar" id="btn-pix" style="color: var(--national-gold); font-size: 28px;"></i>
+                <i class="ph ph-microphone"></i>
+            </div>
+        </div>
+
+        <!-- PAYMENT MODAL -->
+        <div id="pix-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Pix Social Aura</h3>
+                    <i class="ph ph-x" id="close-modal"></i>
+                </div>
+                <div class="amount-entry">
+                    <span class="currency">R$</span>
+                    <input type="number" id="pix-amount" placeholder="0,00" autofocus>
+                </div>
+                <p class="recipient">Enviando para: <strong>Maurício (Liderança)</strong></p>
+                <button id="confirm-pix">Confirmar via Biometria</button>
+            </div>
+        </div>
+
+        <!-- BOTTOM NAVIGATION -->
+        <nav class="bottom-nav">
+            <div class="nav-item active">
+                <i class="ph ph-chats-teardrop"></i>
+                <span>Conversas</span>
+            </div>
+            <div class="nav-item" id="btn-edufuturo">
+                <i class="ph ph-graduation-cap"></i>
+                <span>EduFuturo</span>
+            </div>
+            <div class="nav-item">
+                <i class="ph ph-wallet"></i>
+                <span>Aura Bank</span>
+            </div>
+            <div class="nav-item">
+                <i class="ph ph-user"></i>
+                <span>Perfil</span>
+            </div>
+        </nav>
+
+        <!-- FLOATING ACTION BUTTON -->
+        <div class="fab">
+            <i class="ph ph-plus"></i>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Aura Swarm Service Worker Ativo'))
+                    .catch(err => console.log('Falha ao registrar Service Worker'));
+            });
+        }
+    </script>
+</body>
+</html>

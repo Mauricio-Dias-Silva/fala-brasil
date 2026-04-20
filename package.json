@@ -1,0 +1,12 @@
+{
+  "name": "fala-brasil-cloud",
+  "version": "1.0.0",
+  "description": "Mensageiro Nacional Soberano - Aura Cloud",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.13.0"
+  }
+}
