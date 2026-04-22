@@ -105,15 +105,30 @@
                 <i class="ph ph-graduation-cap"></i>
                 <span>EduFuturo</span>
             </div>
-            <div class="nav-item">
-                <i class="ph ph-wallet"></i>
-                <span>Aura Bank</span>
+            <div class="nav-item" id="btn-install">
+                <i class="ph ph-download-simple" style="color: var(--social-green);"></i>
+                <span>Instalar</span>
             </div>
             <div class="nav-item">
                 <i class="ph ph-gear"></i>
                 <span>Config</span>
             </div>
         </nav>
+
+        <!-- INSTALL MODAL -->
+        <div id="install-modal" class="modal">
+            <div class="modal-content" style="background: linear-gradient(135deg, #0f0f19, #05050a);">
+                <i class="ph-fill ph-check-circle" style="font-size: 50px; color: var(--social-green);"></i>
+                <h3 style="margin-top: 15px;">Instalar FalaBrasil</h3>
+                <p style="font-size: 13px; color: var(--text-muted); margin: 15px 0;">Para ter a experiência completa e soberana, adicione este app à sua tela de início:</p>
+                <div style="text-align: left; font-size: 12px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                    1. Clique no ícone de <strong>Compartilhar</strong> <i class="ph ph-export"></i> ou nos <strong>três pontos</strong> <i class="ph ph-dots-three-vertical"></i> do navegador.<br><br>
+                    2. Selecione <strong>"Adicionar à Tela de Início"</strong>.<br><br>
+                    3. Pronto! O FalaBrasil estará junto aos seus apps nativos.
+                </div>
+                <button id="close-install" style="margin-top: 20px; background: transparent; border: 1px solid var(--text-muted); color: white; padding: 10px 20px; border-radius: 10px; cursor: pointer;">Entendi</button>
+            </div>
+        </div>
 
         <!-- FLOATING ACTION BUTTON -->
         <div class="fab">
@@ -123,13 +138,21 @@
 
     <script src="app.js"></script>
     <script>
-        // Relógio em tempo real para o status bar
+        // Relógio em tempo real
         function updateTime() {
             const now = new Date();
             document.getElementById('current-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
         setInterval(updateTime, 1000);
         updateTime();
+
+        // Lógica do Modal de Instalação
+        const installBtn = document.getElementById('btn-install');
+        const installModal = document.getElementById('install-modal');
+        const closeInstall = document.getElementById('close-install');
+
+        installBtn.addEventListener('click', () => installModal.style.display = 'flex');
+        closeInstall.addEventListener('click', () => installModal.style.display = 'none');
     </script>
 </body>
 </html>
