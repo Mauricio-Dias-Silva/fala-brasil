@@ -221,12 +221,24 @@ function renderPayment(amount, sender, timestamp) {
     
     bubble.innerHTML = `
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-            <i class="ph-fill ph-currency-circle-dollar" style="color: var(--national-gold); font-size: 24px;"></i>
-            <div style="font-weight: 800; font-size: 16px;">R$ ${amount}</div>
+            <div style="background: var(--national-gold); color: black; padding: 5px; border-radius: 50%; display: flex;">
+                <i class="ph-fill ph-currency-circle-dollar" style="font-size: 20px;"></i>
+            </div>
+            <div style="font-weight: 800; font-size: 16px; color: var(--national-gold);">JETPAY TRANSFER</div>
         </div>
-        <div style="font-size: 12px; opacity: 0.8; margin-bottom: 8px;">Pagamento via JetPay Soberano</div>
-        <button style="width: 100%; padding: 8px; border-radius: 8px; border: none; background: var(--national-gold); color: black; font-weight: 800; font-size: 12px; cursor: pointer;">
-            VER DETALHES
+        <div style="font-size: 28px; font-weight: 800; margin-bottom: 10px;">R$ ${amount}</div>
+        
+        ${!isMe ? `
+            <div style="background: white; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=jetpay-pix-mock-${amount}" style="width: 120px; height: 120px;">
+                <div style="color: black; font-size: 10px; font-weight: bold; margin-top: 5px;">ESCANEIE PARA PAGAR</div>
+            </div>
+        ` : `
+            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 12px;">Comprovante de envio gerado com sucesso via rede Omni.</div>
+        `}
+        
+        <button style="width: 100%; padding: 10px; border-radius: 8px; border: none; background: ${isMe ? 'rgba(255,255,255,0.2)' : 'var(--national-gold)'}; color: ${isMe ? 'white' : 'black'}; font-weight: 800; font-size: 12px; cursor: pointer;">
+            ${isMe ? 'VER COMPROVANTE' : 'PAGAR COM PIX'}
         </button>
         <span class="time">${time}</span>
     `;
