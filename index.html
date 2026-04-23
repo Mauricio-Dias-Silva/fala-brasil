@@ -3,156 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FalaBrasil | Console de Comunicação</title>
+    <title>FalaBrasil | Chat Soberano</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="manifest" href="manifest.json">
 </head>
 <body>
-    <div class="mobile-frame">
-        <!-- STATUS BAR (SIMULATED) -->
-        <div class="status-bar">
-            <div class="time" id="current-time">07:55</div>
-            <div class="icons">
-                <i class="ph ph-chart-line-up" style="color: var(--social-green); font-size: 12px;"></i>
-                <i class="ph ph-wifi-high"></i>
-                <i class="ph ph-battery-high"></i>
+    <div class="app-container">
+        <!-- SIDEBAR: LISTA DE CONVERSAS -->
+        <aside id="sidebar">
+            <header>
+                <div class="header-left">
+            <div class="header-avatar" style="background-image: url('logo.png');"></div>
+                </div>
+                <div class="header-actions">
+                    <i class="ph ph-users-three"></i>
+                    <i class="ph ph-circle-dashed"></i>
+                    <i class="ph ph-chat-centered-dots"></i>
+                    <i class="ph ph-dots-three-vertical"></i>
+                </div>
+            </header>
+
+            <div class="search-container" style="padding: 10px 16px; background: var(--bg-deep);">
+                <div style="background: #202c33; border-radius: 8px; padding: 6px 12px; display: flex; align-items: center; gap: 10px;">
+                    <i class="ph ph-magnifying-glass" style="color: var(--text-muted); font-size: 18px;"></i>
+                    <input type="text" placeholder="Pesquisar ou começar uma nova conversa" style="background: transparent; border: none; outline: none; color: white; width: 100%; font-size: 14px;">
+                </div>
             </div>
-        </div>
 
-        <!-- ZERO RATING BANNER -->
-        <div class="zero-rating-banner">
-            <i class="ph-fill ph-shield-check"></i>
-            Rede Aura: <span>Soberania Digital Ativa</span>
-        </div>
+            <div class="chat-list-container" id="chat-list">
+                <!-- ABA CONVERSAS -->
+                <div id="tab-chats">
+                    <div class="chat-item" onclick="openChat('Gabinete Presidencial')">
+                        <div class="avatar" style="background-image: url('https://i.pravatar.cc/150?u=presidencia'); border: 2px solid var(--national-gold);"></div>
+                        <div class="chat-item-info">
+                            <div class="chat-item-header">
+                                <span class="name">Gabinete Presidencial</span>
+                                <span class="time">15:42</span>
+                            </div>
+                            <div class="chat-item-msg"><i class="ph ph-lock-key" style="font-size: 12px;"></i> Mensagem Criptografada</div>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- APP HEADER -->
-        <header>
-            <div class="header-top">
-                <h1>FalaBrasil <span style="font-size: 10px; opacity: 0.5; font-weight: 400; letter-spacing: 1px;">v2.0</span></h1>
-                <div class="header-icons">
-                    <i class="ph ph-shield-star" style="color: var(--national-gold);"></i>
+                <!-- ABA STATUS -->
+                <div id="tab-status" class="hidden" style="padding: 16px;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 24px;">
+                        <div class="avatar" style="background-image: url('https://i.pravatar.cc/100?u=me'); position: relative;">
+                            <i class="ph-fill ph-plus-circle" style="position: absolute; bottom: 0; right: 0; color: var(--social-green); background: white; border-radius: 50%; font-size: 18px;"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; color: white;">Meu Status</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">Toque para atualizar</div>
+                        </div>
+                    </div>
+                    <div style="color: var(--text-muted); font-size: 12px; font-weight: 700; margin-bottom: 15px;">ATUALIZAÇÕES RECENTES</div>
+                    <div class="chat-item">
+                        <div class="avatar" style="background-image: url('https://i.pravatar.cc/150?u=aura'); border: 2px solid var(--social-green);"></div>
+                        <div>
+                            <div style="font-weight: 600; color: white;">Aura Cloud</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">Há 10 minutos</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ABA GRUPOS -->
+                <div id="tab-groups" class="hidden">
+                    <div class="chat-item" style="color: var(--social-green);" onclick="createNewGroup()">
+                        <div class="avatar" style="background: rgba(0,245,196,0.1); display: flex; justify-content: center; align-items: center;">
+                            <i class="ph ph-users-plus"></i>
+                        </div>
+                        <div class="name">Criar Grupo Gigante</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CHAT VIEW: MENSAGENS -->
+        <main id="chat-view">
+            <header>
+                <div class="header-left">
+                    <i class="ph ph-arrow-left back-btn" onclick="closeChat()"></i>
+                    <div id="chat-avatar" class="header-avatar" style="background-image: url('https://i.pravatar.cc/150?u=presidencia');"></div>
+                    <div class="header-info">
+                        <h2 id="chat-name">Gabinete Presidencial</h2>
+                        <span>visto por último hoje às 15:45</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <i class="ph ph-video-camera"></i>
+                    <i class="ph ph-phone"></i>
                     <i class="ph ph-magnifying-glass"></i>
                     <i class="ph ph-dots-three-vertical"></i>
                 </div>
-            </div>
-        </header>
+            </header>
 
-        <!-- CHAT LIST AREA -->
-        <main id="chat-list">
-            <div class="chat-item">
-                <div class="avatar" style="background-image: url('https://i.pravatar.cc/150?u=mauricio');"></div>
-                <div class="chat-info">
-                    <div class="chat-title">
-                        <span class="name">Maurício Sovereign</span>
-                        <span class="time">Agora</span>
-                    </div>
-                    <div class="chat-msg">Aura Cloud Console ativo e operando.</div>
-                </div>
-                <div class="unread-badge">1</div>
+            <div id="messages-container">
+                <!-- Mensagens do chat aqui -->
             </div>
 
-            <div class="chat-item">
-                <div class="avatar" style="background-image: url('https://i.pravatar.cc/150?u=presidencia'); border-color: var(--national-gold);"></div>
-                <div class="chat-info">
-                    <div class="chat-title">
-                        <span class="name">Gabinete Presidencial</span>
-                        <span class="time">07:42</span>
-                    </div>
-                    <div class="chat-msg">Aguardando briefing da Rede Aura.</div>
+            <div class="input-area">
+                <i class="ph ph-smiley icon-btn"></i>
+                <i class="ph ph-plus icon-btn"></i>
+                <div class="input-container">
+                    <input type="text" id="message-input" placeholder="Mensagem">
                 </div>
-            </div>
-            
-            <div style="padding: 30px; text-align: center; opacity: 0.3;">
-                <i class="ph ph-lock-key" style="font-size: 40px;"></i>
-                <p style="font-size: 10px; margin-top: 10px; letter-spacing: 1px;">CRIPTOGRAFIA SOBERANA ATIVA</p>
+                <i class="ph-fill ph-currency-circle-dollar icon-btn" style="color: var(--national-gold); margin: 0 10px;" onclick="openJetPay()"></i>
+                <i class="ph-fill ph-microphone icon-btn" id="send-btn"></i>
             </div>
         </main>
-
-        <!-- CHAT INPUT AREA -->
-        <div id="chat-input-area" style="display: none;">
-            <div class="input-container">
-                <i class="ph ph-link"></i>
-                <input type="text" placeholder="Escrever mensagem soberana...">
-                <i class="ph-fill ph-currency-circle-dollar" id="btn-pix" style="color: var(--national-gold);"></i>
-                <i class="ph ph-microphone"></i>
-            </div>
-        </div>
-
-        <!-- PAYMENT MODAL -->
-        <div id="pix-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Pix Social Aura</h3>
-                    <i class="ph ph-x" id="close-modal" style="color: white; cursor: pointer;"></i>
-                </div>
-                <div class="amount-entry">
-                    <span style="font-size: 20px; vertical-align: middle;">R$</span>
-                    <input type="number" id="pix-amount" placeholder="0,00" autofocus>
-                </div>
-                <p class="recipient">Destinatário: <strong>Gabinete Presidencial</strong></p>
-                <button id="confirm-pix">Autenticar Transferência</button>
-            </div>
-        </div>
-
-        <!-- BOTTOM NAVIGATION -->
+        
         <nav class="bottom-nav">
-            <div class="nav-item active">
+            <div class="nav-item active" onclick="showTab('chats')">
                 <i class="ph-fill ph-chats-teardrop"></i>
-                <span>Chats</span>
+                <span>Conversas</span>
             </div>
-            <div class="nav-item" id="btn-edufuturo">
-                <i class="ph ph-graduation-cap"></i>
-                <span>EduFuturo</span>
+            <div class="nav-item" onclick="showTab('status')">
+                <i class="ph ph-circle-dashed"></i>
+                <span>Status</span>
             </div>
-            <div class="nav-item" id="btn-install">
-                <i class="ph ph-download-simple" style="color: var(--social-green);"></i>
-                <span>Instalar</span>
+            <div class="nav-item" onclick="showTab('groups')">
+                <i class="ph ph-users-three"></i>
+                <span>Grupos</span>
             </div>
-            <div class="nav-item">
+            <div class="nav-item" onclick="showTab('settings')">
                 <i class="ph ph-gear"></i>
                 <span>Config</span>
             </div>
         </nav>
-
-        <!-- INSTALL MODAL -->
-        <div id="install-modal" class="modal">
-            <div class="modal-content" style="background: linear-gradient(135deg, #0f0f19, #05050a);">
-                <i class="ph-fill ph-check-circle" style="font-size: 50px; color: var(--social-green);"></i>
-                <h3 style="margin-top: 15px;">Instalar FalaBrasil</h3>
-                <p style="font-size: 13px; color: var(--text-muted); margin: 15px 0;">Para ter a experiência completa e soberana, adicione este app à sua tela de início:</p>
-                <div style="text-align: left; font-size: 12px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
-                    1. Clique no ícone de <strong>Compartilhar</strong> <i class="ph ph-export"></i> ou nos <strong>três pontos</strong> <i class="ph ph-dots-three-vertical"></i> do navegador.<br><br>
-                    2. Selecione <strong>"Adicionar à Tela de Início"</strong>.<br><br>
-                    3. Pronto! O FalaBrasil estará junto aos seus apps nativos.
-                </div>
-                <button id="close-install" style="margin-top: 20px; background: transparent; border: 1px solid var(--text-muted); color: white; padding: 10px 20px; border-radius: 10px; cursor: pointer;">Entendi</button>
-            </div>
-        </div>
-
-        <!-- FLOATING ACTION BUTTON -->
-        <div class="fab">
-            <i class="ph ph-pencil-simple-line"></i>
-        </div>
     </div>
 
     <script src="app.js"></script>
     <script>
-        // Relógio em tempo real
-        function updateTime() {
-            const now = new Date();
-            document.getElementById('current-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        function openChat(name) {
+            document.getElementById('chat-name').innerText = name;
+            document.getElementById('chat-view').classList.add('active');
         }
-        setInterval(updateTime, 1000);
-        updateTime();
-
-        // Lógica do Modal de Instalação
-        const installBtn = document.getElementById('btn-install');
-        const installModal = document.getElementById('install-modal');
-        const closeInstall = document.getElementById('close-install');
-
-        installBtn.addEventListener('click', () => installModal.style.display = 'flex');
-        closeInstall.addEventListener('click', () => installModal.style.display = 'none');
+        function closeChat() {
+            document.getElementById('chat-view').classList.remove('active');
+        }
+        function showTab(tab) {
+            document.querySelectorAll('#chat-list > div').forEach(div => div.classList.add('hidden'));
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        }
     </script>
 </body>
 </html>

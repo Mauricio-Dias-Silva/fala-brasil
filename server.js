@@ -39,8 +39,15 @@ wss.on('connection', (ws) => {
                 clients.set(ws, { name: msg.name, room: msg.room || 'geral' });
                 // Enviar histórico da sala específica
                 const history = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
-                const roomHistory = history.filter(m => m.room === (msg.room || 'geral')).slice(-50);
+                const roomHistory = history.filter(m => m.room === (msg.room || 'geral')).slice(-100);
                 ws.send(JSON.stringify({ type: 'history', data: roomHistory }));
+                return;
+            }
+
+            if (msg.type === 'create_group') {
+                console.log(`Novo grupo soberano criado: ${msg.group_name}`);
+                // Notificar criador
+                ws.send(JSON.stringify({ type: 'group_created', name: msg.group_name }));
                 return;
             }
 

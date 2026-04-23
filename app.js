@@ -1,11 +1,18 @@
-// CONFIGURAÇÃO DE REDE AURA E CRIPTOGRAFIA v3.0
+// FALA BRASIL v3.5 - WHATSAPP SOBERANO EDITION
 const HOST = window.location.origin.replace(/^http/, 'ws');
 let socket;
 let currentUser = localStorage.getItem('aura_user') || null;
 let currentRoom = 'geral';
 const SOVEREIGN_KEY = "AURA-BRASIL-SOBERANO-2026";
 
-// FUNÇÕES DE CRIPTOGRAFIA
+// DOM ELEMENTS
+const chatListContainer = document.getElementById('chat-list');
+const messagesContainer = document.getElementById('messages-container');
+const messageInput = document.getElementById('message-input');
+const sendBtn = document.getElementById('send-btn');
+const chatView = document.getElementById('chat-view');
+
+// CRYPTO UTILS
 async function encryptMessage(text) {
     const encoder = new TextEncoder();
     const data = encoder.encode(text);
@@ -17,7 +24,7 @@ async function encryptMessage(text) {
 }
 
 async function decryptMessage(cipherB64, ivB64) {
-    if (!cipherB64 || !ivB64) return "[ERRO DE CIFRA]";
+    if (!cipherB64 || !ivB64) return "[MENSAGEM PROTEGIDA]";
     try {
         const encoder = new TextEncoder();
         const decoder = new TextDecoder();
@@ -27,122 +34,203 @@ async function decryptMessage(cipherB64, ivB64) {
         const cipher = Uint8Array.from(atob(cipherB64), c => c.charCodeAt(0));
         const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, cipher);
         return decoder.decode(decrypted);
-    } catch (e) { return "[MENSAGEM PROTEGIDA]"; }
+    } catch (e) { return "[ERRO DE DESCRIPTOGRAFIA]"; }
 }
 
-// ELEMENTOS DOM
-const chatList = document.getElementById('chat-list');
-const chatInputArea = document.getElementById('chat-input-area');
-const inputField = document.querySelector('#chat-input-area input');
-const mobileFrame = document.querySelector('.mobile-frame');
-
-function connectToAuraCloud() {
+// WEBSOCKET LOGIC
+function connectToAura() {
     socket = new WebSocket(HOST);
-
+    
     socket.onopen = () => {
-        document.querySelector('.zero-rating-banner span').innerText = "Soberania Ativa: " + currentRoom.toUpperCase();
-        // Autenticação na sala
+        console.log("Conectado à Rede Aura");
         socket.send(JSON.stringify({ type: 'auth', name: currentUser, room: currentRoom }));
     };
 
     socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'history') {
-            document.getElementById('messages-container')?.remove();
+            messagesContainer.innerHTML = '';
             for (const msg of data.data) {
-                const text = msg.isAI ? msg.text : await decryptMessage(msg.cipher, msg.iv);
-                displayMessage(text, msg.sender, msg.timestamp, msg.isAI);
+                if (msg.type === 'payment') {
+                    renderPayment(msg.amount, msg.sender, msg.timestamp);
+                } else {
+                    const text = msg.isAI ? msg.text : await decryptMessage(msg.cipher, msg.iv);
+                    renderBubble(text, msg.sender, msg.timestamp, msg.isAI);
+                }
             }
         } else if (data.type === 'message') {
             const text = data.isAI ? data.text : await decryptMessage(data.cipher, data.iv);
-            displayMessage(text, data.sender, data.timestamp, data.isAI);
+            renderBubble(text, data.sender, data.timestamp, data.isAI);
+        } else if (data.type === 'payment') {
+            renderPayment(data.amount, data.sender, data.timestamp);
         }
     };
 
-    socket.onclose = () => setTimeout(connectToAuraCloud, 3000);
+    socket.onclose = () => setTimeout(connectToAura, 3000);
 }
 
-function displayMessage(text, sender, timestamp, isAI = false) {
-    let container = document.getElementById('messages-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'messages-container';
-        container.style.cssText = "flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 120px;";
-        mobileFrame.insertBefore(container, chatInputArea);
-    }
-
+// UI RENDERING
+function renderBubble(text, sender, timestamp, isAI = false) {
     const isMe = sender === currentUser;
-    const msgDiv = document.createElement('div');
-    msgDiv.style.cssText = `
-        max-width: 85%; padding: 12px 16px; border-radius: ${isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px'};
-        background: ${isAI ? 'rgba(0,245,196,0.1)' : (isMe ? 'linear-gradient(135deg, var(--aura-blue), #7d5fff)' : 'rgba(255,255,255,0.08)')};
-        color: white; align-self: ${isMe ? 'flex-end' : 'flex-start'};
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid ${isAI ? 'var(--social-green)' : 'rgba(255,255,255,0.05)'};
-        backdrop-filter: blur(5px);
-    `;
+    const bubble = document.createElement('div');
+    bubble.className = `bubble ${isMe ? 'sent' : 'received'}`;
+    
+    if (isAI) bubble.style.borderLeft = "4px solid var(--social-green)";
 
     const time = timestamp ? new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--';
-    msgDiv.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 10px;">
-            <span style="font-size: 10px; font-weight: 800; color: ${isAI ? 'var(--national-gold)' : 'var(--social-green)'}; text-transform: uppercase;">${sender}</span>
-            <i class="ph ${isAI ? 'ph-sparkle' : 'ph-lock-key'}" style="font-size: 10px; color: rgba(255,255,255,0.2);"></i>
+    
+    bubble.innerHTML = `
+        <div style="font-size: 11px; font-weight: 700; color: ${isMe ? 'var(--social-green)' : 'var(--aura-blue)'}; margin-bottom: 2px;">
+            ${isMe ? 'Você' : sender}
         </div>
-        <div style="font-size: 14px; line-height: 1.4;">${text}</div>
-        <div style="font-size: 9px; color: rgba(255,255,255,0.4); text-align: right; margin-top: 4px;">${time}</div>
+        <div>${text}</div>
+        <span class="time">${time} ${isMe ? '<i class="ph-fill ph-check-double" style="color: #53bdeb;"></i>' : ''}</span>
     `;
 
-    container.appendChild(msgDiv);
-    container.scrollTop = container.scrollHeight;
+    messagesContainer.appendChild(bubble);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// --- FUNÇÃO DE CONTATOS (SALA SOBERANA) ---
-async function importContacts() {
-    const props = ['name', 'tel'];
-    const opts = { multiple: true };
-
-    try {
-        const contacts = await navigator.contacts.select(props, opts);
-        if (contacts.length > 0) {
-            alert(`${contacts.length} contatos importados para sua Rede Soberana!`);
-            // Aqui poderíamos salvar no servidor ou localStorage
-            console.log(contacts);
-        }
-    } catch (ex) {
-        alert("Acesso aos contatos negado ou não suportado neste navegador.");
-    }
-}
-
-// SWITCH DE SALAS
-document.querySelectorAll('.chat-item').forEach(item => {
-    item.addEventListener('click', () => {
-        const name = item.querySelector('.name').innerText;
-        currentRoom = name.toLowerCase().includes('presidencial') ? 'gabinete' : 'geral';
-        chatList.style.display = 'none';
-        chatInputArea.style.display = 'block';
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: 'auth', name: currentUser, room: currentRoom }));
-        }
-    });
-});
-
-inputField.addEventListener('keypress', async (e) => {
-    if (e.key === 'Enter' && inputField.value.trim() !== "") {
-        const text = inputField.value;
-        if (socket.readyState === WebSocket.OPEN) {
-            const encrypted = await encryptMessage(text);
-            socket.send(JSON.stringify({ cipher: encrypted.cipher, iv: encrypted.iv, sender: currentUser, room: currentRoom }));
-            inputField.value = '';
-        }
+// EVENT LISTENERS
+messageInput.addEventListener('input', () => {
+    if (messageInput.value.trim() !== "") {
+        sendBtn.className = "ph-fill ph-paper-plane-tilt icon-btn send-btn";
+    } else {
+        sendBtn.className = "ph-fill ph-microphone icon-btn";
     }
 });
 
-// Adicionar listener para o botão de contatos (se existisse no nav)
-document.querySelector('.fab').addEventListener('click', importContacts);
+async function sendMessage() {
+    const text = messageInput.value.trim();
+    if (text !== "" && socket.readyState === WebSocket.OPEN) {
+        const encrypted = await encryptMessage(text);
+        socket.send(JSON.stringify({ 
+            cipher: encrypted.cipher, 
+            iv: encrypted.iv, 
+            sender: currentUser, 
+            room: currentRoom 
+        }));
+        messageInput.value = '';
+        sendBtn.className = "ph-fill ph-microphone icon-btn";
+    }
+}
 
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+});
+
+sendBtn.addEventListener('click', () => {
+    if (sendBtn.classList.contains('ph-paper-plane-tilt')) {
+        sendMessage();
+    }
+});
+
+// INITIALIZATION
 window.onload = () => {
     if (!currentUser) {
-        currentUser = prompt("Digite seu Nome Soberano:") || "Usuário";
+        currentUser = prompt("Digite seu Nome Soberano:") || "Cidadão";
         localStorage.setItem('aura_user', currentUser);
     }
-    connectToAuraCloud();
+    connectToAura();
 };
+
+// GLOBAL FUNCTIONS FOR MOBILE NAVIGATION
+window.openChat = (name) => {
+    currentRoom = name.toLowerCase().includes('presidencial') ? 'gabinete' : 'geral';
+    document.getElementById('chat-name').innerText = name;
+    document.getElementById('chat-avatar').style.backgroundImage = name.includes('Presidencial') 
+        ? "url('https://i.pravatar.cc/150?u=presidencia')" 
+        : "url('https://i.pravatar.cc/150?u=aura')";
+    
+    chatView.classList.add('active');
+    
+    // Solicitar histórico da nova sala
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'auth', name: currentUser, room: currentRoom }));
+    }
+};
+
+window.closeChat = () => {
+    chatView.classList.remove('active');
+};
+
+// CONTACTS & GROUPS
+window.importContacts = async () => {
+    if (window.NativeAura) {
+        window.NativeAura.postMessage('getContacts');
+    } else {
+        const props = ['name', 'tel'];
+        try {
+            const contacts = await navigator.contacts.select(props, { multiple: true });
+            alert(`${contacts.length} contatos selecionados.`);
+        } catch (e) {
+            alert("Acesso aos contatos negado ou não suportado.");
+        }
+    }
+};
+
+window.onNativeContactsReceived = (json) => {
+    const contacts = JSON.parse(json);
+    alert(`${contacts.length} contatos importados via Rede Soberana!`);
+    console.log(contacts);
+};
+
+window.createNewGroup = () => {
+    const name = prompt("Nome do Grupo Gigante:");
+    if (name) {
+        socket.send(JSON.stringify({ type: 'create_group', group_name: name }));
+        alert(`Grupo "${name}" criado! Agora você pode adicionar até 1 milhão de pessoas.`);
+    }
+};
+
+window.showTab = (tab) => {
+    document.getElementById('tab-chats').classList.add('hidden');
+    document.getElementById('tab-status').classList.add('hidden');
+    document.getElementById('tab-groups').classList.add('hidden');
+    
+    document.getElementById('tab-' + tab).classList.remove('hidden');
+    
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    // Encontrar o item clicado é mais complexo aqui, mas a troca de abas funciona.
+};
+
+// JETPAY INTEGRATION
+window.openJetPay = () => {
+    const amount = prompt("Valor para transferência via JetPay (R$):");
+    if (amount) {
+        const confirmPay = confirm(`Confirmar envio de R$ ${amount} para ${document.getElementById('chat-name').innerText}?`);
+        if (confirmPay) {
+            socket.send(JSON.stringify({ 
+                type: 'payment', 
+                amount: amount, 
+                sender: currentUser, 
+                room: currentRoom 
+            }));
+        }
+    }
+};
+
+function renderPayment(amount, sender, timestamp) {
+    const isMe = sender === currentUser;
+    const bubble = document.createElement('div');
+    bubble.className = `bubble ${isMe ? 'sent' : 'received'}`;
+    bubble.style.background = isMe ? "linear-gradient(135deg, #005c4b, #004d33)" : "var(--aura-bubble-in)";
+    bubble.style.border = "1px solid var(--national-gold)";
+
+    const time = timestamp ? new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--';
+    
+    bubble.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <i class="ph-fill ph-currency-circle-dollar" style="color: var(--national-gold); font-size: 24px;"></i>
+            <div style="font-weight: 800; font-size: 16px;">R$ ${amount}</div>
+        </div>
+        <div style="font-size: 12px; opacity: 0.8; margin-bottom: 8px;">Pagamento via JetPay Soberano</div>
+        <button style="width: 100%; padding: 8px; border-radius: 8px; border: none; background: var(--national-gold); color: black; font-weight: 800; font-size: 12px; cursor: pointer;">
+            VER DETALHES
+        </button>
+        <span class="time">${time}</span>
+    `;
+
+    messagesContainer.appendChild(bubble);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
