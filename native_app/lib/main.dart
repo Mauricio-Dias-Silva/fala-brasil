@@ -3,6 +3,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'dart:convert';
 
 void main() {
@@ -42,13 +44,13 @@ class WebViewScreen extends StatefulWidget {
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  String _currentUrl = '';
 
   @override
   void initState() {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setDomStorageEnabled(true)
       ..setBackgroundColor(const Color(0xFF030308))
       ..setUserAgent("AuraSovereignApp/1.0")
       ..setNavigationDelegate(
@@ -58,6 +60,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
           },
           onWebResourceError: (WebResourceError error) {
             debugPrint("Erro WebView: ${error.description}");
+            setState(() => _isLoading = false);
+            // Mostrar aviso de falha de SSL ou Conexão
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Falha ao carregar o servidor. Verifique a URL e tente novamente."),
+                backgroundColor: Colors.redAccent,
+              )
+            );
+            // Voltar para a tela de configuração
+            _showConfigDialog();
           },
         ),
       )
@@ -66,11 +78,81 @@ class _WebViewScreenState extends State<WebViewScreen> {
         onMessageReceived: (JavaScriptMessage message) async {
           if (message.message == 'getContacts') {
             final contacts = await _getNativeContacts();
-            _controller.runJavaScript("window.onNativeContactsReceived('$contacts')");
+            _controller.runJavaScript("window.onNativeContactsReceived('\$contacts')");
           }
         },
-      )
-      ..loadRequest(Uri.parse('https://site-269-relnbcvmoq-ue.a.run.app/'));
+      );
+    
+    _loadUrl();
+  }
+
+  Future<void> _loadUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? url = prefs.getString('server_url');
+    if (url == null || url.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showConfigDialog();
+      });
+    } else {
+      setState(() => _currentUrl = url);
+      _controller.loadRequest(Uri.parse(url));
+    }
+  }
+
+  Future<void> _showConfigDialog() async {
+    String tempUrl = _currentUrl;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF161b22),
+          title: const Text('Configurar Servidor Web', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'https://seu-servidor...',
+              hintStyle: TextStyle(color: Colors.white54),
+            ),
+            onChanged: (val) => tempUrl = val,
+            controller: TextEditingController(text: tempUrl),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('SALVAR', style: TextStyle(color: Color(0xFF00f5c4))),
+              onPressed: () async {
+                String finalUrl = tempUrl.trim();
+                if (finalUrl.isNotEmpty) {
+                  // FORÇAR HTTPS: A WebCrypto API (usada no app.js) falha se não for https://
+                  if (!finalUrl.startsWith('https://') && !finalUrl.startsWith('http://localhost')) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("ATENÇÃO: O Servidor deve iniciar com https:// para garantir a criptografia."),
+                        backgroundColor: Colors.orange,
+                        duration: Duration(seconds: 4),
+                      )
+                    );
+                    finalUrl = finalUrl.replaceFirst('http://', 'https://');
+                    if (!finalUrl.startsWith('https://')) {
+                      finalUrl = 'https://' + finalUrl;
+                    }
+                  }
+
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('server_url', finalUrl);
+                  setState(() {
+                    _currentUrl = finalUrl;
+                    _isLoading = true;
+                  });
+                  _controller.loadRequest(Uri.parse(finalUrl));
+                  Navigator.pop(context);
+                }
+              },
+            )
+          ],
+        );
+      }
+    );
   }
 
   Future<String> _getNativeContacts() async {
@@ -85,13 +167,45 @@ class _WebViewScreenState extends State<WebViewScreen> {
     return '[]';
   }
 
+  void _openQrScanner() {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => const QRScannerScreen())).then((result) {
+      if (result != null && result is String) {
+        try {
+          final data = jsonDecode(result);
+          if (data['action'] == 'login' && data['session_id'] != null) {
+            // Send the auth_web command through the WebView using JavaScript
+            final token = ''; // We can read aura_token from local storage of webview, but let's just dispatch to JS
+            final sessionId = data['session_id'];
+            
+            // Invoke the authorize web session via Javascript in the WebView
+            _controller.runJavaScript("""
+              const authTokenStr = localStorage.getItem('aura_token');
+              if (socket && socket.readyState === WebSocket.OPEN && authTokenStr) {
+                  socket.send(JSON.stringify({ 
+                      type: 'authorize_web_session', 
+                      session_id: '\$sessionId', 
+                      token: authTokenStr 
+                  }));
+                  alert('Sessão Web Autorizada!');
+              } else {
+                  alert('Erro: Você precisa estar logado no celular primeiro.');
+              }
+            """);
+          }
+        } catch (e) {
+          debugPrint("Invalid QR Code: \$e");
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Stack(
           children: [
-            WebViewWidget(controller: _controller),
+            if (_currentUrl.isNotEmpty) WebViewWidget(controller: _controller),
             if (_isLoading)
               Container(
                 color: const Color(0xFF030308),
@@ -99,7 +213,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo Premium Fala Brasil
                       const Icon(Icons.security, size: 80, color: Color(0xFF00f5c4)),
                       const SizedBox(height: 20),
                       const CircularProgressIndicator(color: Color(0xFF00f5c4)),
@@ -114,6 +227,55 @@ class _WebViewScreenState extends State<WebViewScreen> {
               ),
           ],
         ),
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'config_btn',
+            mini: true,
+            backgroundColor: Colors.white24,
+            child: const Icon(Icons.settings, color: Colors.white),
+            onPressed: _showConfigDialog,
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: 'qr_btn',
+            backgroundColor: const Color(0xFF00f5c4),
+            child: const Icon(Icons.qr_code_scanner, color: Colors.black),
+            onPressed: _openQrScanner,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class QRScannerScreen extends StatefulWidget {
+  const QRScannerScreen({super.key});
+
+  @override
+  State<QRScannerScreen> createState() => _QRScannerScreenState();
+}
+
+class _QRScannerScreenState extends State<QRScannerScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Escanear WhatsApp Web'),
+        backgroundColor: Colors.black,
+      ),
+      body: MobileScanner(
+        onDetect: (capture) {
+          final List<Barcode> barcodes = capture.barcodes;
+          if (barcodes.isNotEmpty) {
+            final String? code = barcodes.first.rawValue;
+            if (code != null) {
+              Navigator.pop(context, code);
+            }
+          }
+        },
       ),
     );
   }

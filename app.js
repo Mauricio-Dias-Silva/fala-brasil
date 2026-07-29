@@ -1,9 +1,12 @@
-// FALA BRASIL v3.5 - WHATSAPP SOBERANO EDITION
+// FALA BRASIL v4.0 - SOBERANO EDITION (Fase 1)
 const HOST = window.location.origin.replace(/^http/, 'ws');
 let socket;
 let currentUser = localStorage.getItem('aura_user') || null;
+let authToken = localStorage.getItem('aura_token') || null;
 let currentRoom = 'geral';
-const SOVEREIGN_KEY = "AURA-BRASIL-SOBERANO-2026";
+let ecdhKeyPair = null;
+let publicKeysMap = new Map(); // username -> base64 public key
+const SOVEREIGN_KEY = "AURA-BRASIL-SOBERANO-2026"; // Fallback para grupos públicos
 
 // DOM ELEMENTS
 const chatListContainer = document.getElementById('chat-list');
@@ -12,8 +15,22 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const chatView = document.getElementById('chat-view');
 
-// CRYPTO UTILS
-async function encryptMessage(text) {
+// 1. GERAR CHAVES ECDH (E2EE)
+async function generateKeys() {
+    if (!window.crypto || !window.crypto.subtle) {
+        throw new Error("API crypto.subtle não encontrada. Requer HTTPS (Secure Context).");
+    }
+    ecdhKeyPair = await crypto.subtle.generateKey(
+        { name: "ECDH", namedCurve: "P-256" },
+        true,
+        ["deriveKey", "deriveBits"]
+    );
+    const exportedPub = await crypto.subtle.exportKey("raw", ecdhKeyPair.publicKey);
+    return btoa(String.fromCharCode(...new Uint8Array(exportedPub)));
+}
+
+// 2. CRYPTO UTILS (Híbrido Fase 1 - ECDH preparado, AES-GCM ativo para Grupos)
+async function encryptMessage(text, targetUser = null) {
     const encoder = new TextEncoder();
     const data = encoder.encode(text);
     const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(SOVEREIGN_KEY), { name: "PBKDF2" }, false, ["deriveKey"]);
@@ -26,10 +43,9 @@ async function encryptMessage(text) {
 async function decryptMessage(cipherB64, ivB64) {
     if (!cipherB64 || !ivB64) return "[MENSAGEM PROTEGIDA]";
     try {
-        const encoder = new TextEncoder();
         const decoder = new TextDecoder();
-        const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(SOVEREIGN_KEY), { name: "PBKDF2" }, false, ["deriveKey"]);
-        const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: encoder.encode("aura-salt"), iterations: 1000, hash: "SHA-256" }, keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+        const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(SOVEREIGN_KEY), { name: "PBKDF2" }, false, ["deriveKey"]);
+        const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: new TextEncoder().encode("aura-salt"), iterations: 1000, hash: "SHA-256" }, keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
         const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
         const cipher = Uint8Array.from(atob(cipherB64), c => c.charCodeAt(0));
         const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, cipher);
@@ -37,23 +53,92 @@ async function decryptMessage(cipherB64, ivB64) {
     } catch (e) { return "[ERRO DE DESCRIPTOGRAFIA]"; }
 }
 
-// WEBSOCKET LOGIC
+// 3. WEBSOCKET E LOGIN
 function connectToAura() {
+    if (!window.crypto || !window.crypto.subtle) {
+        const errDiv = document.getElementById('login-error');
+        if (errDiv) {
+            errDiv.innerHTML = "<b>ERRO DE SEGURANÇA:</b> Este aplicativo requer uma conexão segura (HTTPS).<br>A criptografia Soberana não pode ser inicializada.";
+            errDiv.style.display = 'block';
+        }
+        return; // Não tenta conectar se não for seguro
+    }
+
     socket = new WebSocket(HOST);
     
-    socket.onopen = () => {
+    socket.onopen = async () => {
         console.log("Conectado à Rede Aura");
-        socket.send(JSON.stringify({ type: 'auth', name: currentUser, room: currentRoom }));
+        let pubKey = null;
+        try {
+            pubKey = await generateKeys();
+        } catch (e) {
+            console.error("Falha ao gerar chaves:", e);
+            const errDiv = document.getElementById('login-error');
+            if (errDiv) { errDiv.innerText = e.message; errDiv.style.display = 'block'; }
+            return;
+        }
+        
+        // Tenta auth automático via token
+        if (authToken) {
+            socket.send(JSON.stringify({ type: 'auth', token: authToken, publicKey: pubKey, room: currentRoom }));
+        } else {
+            // Se for web (desktop), pede sessão QR Code. Se for nativo, mostra form legado.
+            if (!window.NativeAura) {
+                socket.send(JSON.stringify({ type: 'request_web_session' }));
+            } else {
+                document.getElementById('legacy-login').style.display = 'flex';
+                document.getElementById('qrcode-container').style.display = 'none';
+                document.querySelector('#login-screen p').style.display = 'none';
+            }
+        }
     };
 
     socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
-        if (data.type === 'history') {
+        
+        if (data.type === 'auth_success') {
+            authToken = data.token;
+            currentUser = data.name;
+            localStorage.setItem('aura_token', authToken);
+            localStorage.setItem('aura_user', currentUser);
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'flex';
+            // Pede as chaves públicas da galera
+            socket.send(JSON.stringify({ type: 'get_public_keys' }));
+        }
+        else if (data.type === 'web_session_created') {
+            const qrContainer = document.getElementById('qrcode-container');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: JSON.stringify({ action: 'login', session_id: data.session_id }),
+                width: 200,
+                height: 200,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+        else if (data.type === 'error') {
+            const errDiv = document.getElementById('login-error');
+            if (errDiv) {
+                errDiv.innerText = data.message;
+                errDiv.style.display = 'block';
+            }
+            if (data.message.includes('Token')) {
+                localStorage.removeItem('aura_token');
+                document.getElementById('login-screen').style.display = 'flex';
+                document.getElementById('main-app').style.display = 'none';
+            }
+        }
+        else if (data.type === 'public_keys') {
+            data.keys.forEach(k => publicKeysMap.set(k.username, k.public_key));
+            console.log("Chaves Públicas recebidas:", publicKeysMap);
+        }
+        else if (data.type === 'history') {
             messagesContainer.innerHTML = '';
             for (const msg of data.data) {
-                if (msg.type === 'payment') {
-                    renderPayment(msg.amount, msg.sender, msg.timestamp);
-                } else {
+                if (msg.type === 'payment') renderPayment(msg.amount, msg.sender, msg.timestamp);
+                else {
                     const text = msg.isAI ? msg.text : await decryptMessage(msg.cipher, msg.iv);
                     renderBubble(text, msg.sender, msg.timestamp, msg.isAI);
                 }
@@ -61,12 +146,27 @@ function connectToAura() {
         } else if (data.type === 'message') {
             const text = data.isAI ? data.text : await decryptMessage(data.cipher, data.iv);
             renderBubble(text, data.sender, data.timestamp, data.isAI);
-        } else if (data.type === 'payment') {
-            renderPayment(data.amount, data.sender, data.timestamp);
         }
     };
 
     socket.onclose = () => setTimeout(connectToAura, 3000);
+}
+
+// 4. FUNÇÃO DO BOTÃO DE LOGIN HTML
+async function performLogin() {
+    const user = document.getElementById('login-username').value;
+    const pass = document.getElementById('login-password').value;
+    if (!user || !pass) return alert("Preencha nome e senha");
+    
+    document.getElementById('login-error').style.display = 'none';
+    const pubKey = await generateKeys();
+    
+    if (socket.readyState !== WebSocket.OPEN) {
+        socket = new WebSocket(HOST);
+        socket.onopen = () => socket.send(JSON.stringify({ type: 'auth', name: user, password: pass, publicKey: pubKey, room: currentRoom }));
+    } else {
+        socket.send(JSON.stringify({ type: 'auth', name: user, password: pass, publicKey: pubKey, room: currentRoom }));
+    }
 }
 
 // UI RENDERING
@@ -107,6 +207,7 @@ async function sendMessage() {
         socket.send(JSON.stringify({ 
             cipher: encrypted.cipher, 
             iv: encrypted.iv, 
+            text: text, // Temporário para a IA ler, na fase 2 isso some
             sender: currentUser, 
             room: currentRoom 
         }));
@@ -120,16 +221,14 @@ messageInput.addEventListener('keypress', (e) => {
 });
 
 sendBtn.addEventListener('click', () => {
-    if (sendBtn.classList.contains('ph-paper-plane-tilt')) {
-        sendMessage();
-    }
+    if (sendBtn.classList.contains('ph-paper-plane-tilt')) sendMessage();
 });
 
 // INITIALIZATION
 window.onload = () => {
-    if (!currentUser) {
-        currentUser = prompt("Digite seu Nome Soberano:") || "Cidadão";
-        localStorage.setItem('aura_user', currentUser);
+    if (!authToken) {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('main-app').style.display = 'none';
     }
     connectToAura();
 };
