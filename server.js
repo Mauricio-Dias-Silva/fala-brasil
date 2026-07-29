@@ -3,35 +3,37 @@ const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 const crypto = require('crypto');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const PORT = process.env.PORT || 8080;
 const JWT_SECRET = "AURA-BRASIL-JWT-SUPER-SECRET-2026"; // In prod, use .env
 
-// Configurando Banco de Dados SQLite
-const dbPath = path.join(__dirname, 'fala_brasil.db');
-const db = new sqlite3.Database(dbPath);
+// Configurando Banco de Dados PostgreSQL (Supabase)
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+});
 
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
+pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE,
         password_hash TEXT,
         public_key TEXT
-    )`);
-    db.run(`CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sender TEXT,
-        room TEXT,
+    );
+    CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender VARCHAR(255),
+        room VARCHAR(255),
         cipher TEXT,
         iv TEXT,
         text TEXT,
         is_ai BOOLEAN,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-});
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`).catch(err => console.error('Erro ao criar tabelas:', err));
 
 const server = http.createServer((req, res) => {
     let filePath = '.' + req.url;
@@ -119,13 +121,14 @@ wss.on('connection', (ws) => {
                 }
 
                 // Fluxo Login / Registro
-                db.get("SELECT * FROM users WHERE username = ?", [name], (err, user) => {
+                pool.query("SELECT * FROM users WHERE username = $1", [name], (err, result) => {
                     if (err) return ws.send(JSON.stringify({ type: 'error', message: 'Erro no BD' }));
+                    const user = result.rows[0];
                     
                     if (!user) {
                         // Registra novo usuário
                         const hash = bcrypt.hashSync(password, 10);
-                        db.run("INSERT INTO users (username, password_hash, public_key) VALUES (?, ?, ?)", [name, hash, publicKey], function(err) {
+                        pool.query("INSERT INTO users (username, password_hash, public_key) VALUES ($1, $2, $3)", [name, hash, publicKey], function(err) {
                             if (err) return ws.send(JSON.stringify({ type: 'error', message: 'Erro ao criar usuário' }));
                             const newToken = jwt.sign({ name }, JWT_SECRET, { expiresIn: '7d' });
                             ws.send(JSON.stringify({ type: 'auth_success', token: newToken, name }));
@@ -136,7 +139,7 @@ wss.on('connection', (ws) => {
                         if (bcrypt.compareSync(password, user.password_hash)) {
                             // Atualiza chave publica se houver uma nova
                             if (publicKey && publicKey !== user.public_key) {
-                                db.run("UPDATE users SET public_key = ? WHERE username = ?", [publicKey, name]);
+                                pool.query("UPDATE users SET public_key = $1 WHERE username = $2", [publicKey, name]);
                             }
                             const newToken = jwt.sign({ name }, JWT_SECRET, { expiresIn: '7d' });
                             ws.send(JSON.stringify({ type: 'auth_success', token: newToken, name }));
@@ -155,9 +158,9 @@ wss.on('connection', (ws) => {
 
             if (msg.type === 'get_public_keys') {
                 // Retorna chaves publicas de todos na sala
-                db.all("SELECT username, public_key FROM users", [], (err, rows) => {
-                    if (!err && rows) {
-                        ws.send(JSON.stringify({ type: 'public_keys', keys: rows }));
+                pool.query("SELECT username, public_key FROM users", [], (err, result) => {
+                    if (!err && result.rows) {
+                        ws.send(JSON.stringify({ type: 'public_keys', keys: result.rows }));
                     }
                 });
                 return;
@@ -174,10 +177,10 @@ wss.on('connection', (ws) => {
             msg.room = msg.room || 'geral';
             msg.sender = senderInfo.name;
 
-            // Salva no SQLite
-            db.run("INSERT INTO messages (sender, room, cipher, iv, text, is_ai, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)", 
-                [msg.sender, msg.room, msg.cipher || null, msg.iv || null, msg.text || null, msg.isAI ? 1 : 0, msg.timestamp]
-            );
+            // Salva no PostgreSQL
+            pool.query("INSERT INTO messages (sender, room, cipher, iv, text, is_ai, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7)", 
+                [msg.sender, msg.room, msg.cipher || null, msg.iv || null, msg.text || null, msg.isAI ? true : false, msg.timestamp]
+            ).catch(err => console.error('Erro ao salvar mensagem:', err));
 
             // Transmite
             const output = JSON.stringify({ type: 'message', ...msg });
@@ -204,11 +207,11 @@ function finishAuth(ws, name, room) {
     clients.set(ws, { name, room });
     console.log(`Usuário autenticado: ${name} na sala ${room}`);
     
-    db.all("SELECT * FROM messages WHERE room = ? ORDER BY timestamp DESC LIMIT 100", [room], (err, rows) => {
-        if (!err && rows) {
-            const history = rows.reverse().map(r => ({
+    pool.query("SELECT * FROM messages WHERE room = $1 ORDER BY timestamp DESC LIMIT 100", [room], (err, result) => {
+        if (!err && result.rows) {
+            const history = result.rows.reverse().map(r => ({
                 ...r,
-                isAI: r.is_ai === 1
+                isAI: r.is_ai === true
             }));
             ws.send(JSON.stringify({ type: 'history', data: history }));
         }
@@ -230,9 +233,9 @@ function handleAuraAI(query, room) {
             isAI: true
         };
         
-        db.run("INSERT INTO messages (sender, room, text, is_ai, timestamp) VALUES (?, ?, ?, ?, ?)", 
-            [auraMsg.sender, auraMsg.room, auraMsg.text, 1, auraMsg.timestamp]
-        );
+        pool.query("INSERT INTO messages (sender, room, text, is_ai, timestamp) VALUES ($1, $2, $3, $4, $5)", 
+            [auraMsg.sender, auraMsg.room, auraMsg.text, true, auraMsg.timestamp]
+        ).catch(err => console.error(err));
 
         wss.clients.forEach((client) => {
             const clientData = clients.get(client);
