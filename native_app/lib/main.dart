@@ -177,7 +177,7 @@ class QRScannerScreen extends StatelessWidget {
   }
 }
 
-const String kFalaBrasilMasterHtml = """
+const String kFalaBrasilMasterHtml = r"""
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -600,9 +600,9 @@ const String kFalaBrasilMasterHtml = """
             bubble.innerHTML = `
                 <strong>⚡ Fala Pay — Cobrança PIX</strong>
                 <div class="pix-card">
-                    <div style="font-size: 18px; font-weight: bold; color: #00f5c4;">R$ \${valor}</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #00f5c4;">R\\$ \${valor}</div>
                     <small style="color: var(--text-muted);">Transferência Instantânea Soberana</small>
-                    <button class="pix-btn" onclick="alert('✅ PIX de R$ \${valor} Copiado!')">Copiar Código PIX</button>
+                    <button class="pix-btn" onclick="alert('✅ PIX de R\\$ \${valor} Copiado!')">Copiar Código PIX</button>
                 </div>
                 <div class="msg-meta">\${now} ✓✓</div>
             `;
