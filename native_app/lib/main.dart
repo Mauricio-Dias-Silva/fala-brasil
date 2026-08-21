@@ -90,13 +90,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
     final prefs = await SharedPreferences.getInstance();
     String? url = prefs.getString('server_url');
     if (url == null || url.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showConfigDialog();
-      });
-    } else {
-      setState(() => _currentUrl = url);
-      _controller.loadRequest(Uri.parse(url));
+      url = 'https://falabrasil.auracloud.com.br';
+      await prefs.setString('server_url', url);
     }
+    setState(() => _currentUrl = url!);
+    _controller.loadRequest(Uri.parse(url));
   }
 
   Future<void> _showConfigDialog() async {

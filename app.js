@@ -82,13 +82,19 @@ function connectToAura() {
         if (authToken) {
             socket.send(JSON.stringify({ type: 'auth', token: authToken, publicKey: pubKey, room: currentRoom }));
         } else {
-            // Se for web (desktop), pede sessão QR Code. Se for nativo, mostra form legado.
-            if (!window.NativeAura) {
+            const isMobile = window.innerWidth <= 768 || navigator.userAgent.includes('Mobile') || navigator.userAgent.includes('Android') || navigator.userAgent.includes('AuraSovereignApp') || Boolean(window.NativeAura);
+            if (!isMobile) {
                 socket.send(JSON.stringify({ type: 'request_web_session' }));
             } else {
-                document.getElementById('legacy-login').style.display = 'flex';
-                document.getElementById('qrcode-container').style.display = 'none';
-                document.querySelector('#login-screen p').style.display = 'none';
+                const legacyLogin = document.getElementById('legacy-login');
+                const qrCodeContainer = document.getElementById('qrcode-container');
+                const infoText = document.querySelector('#login-screen p');
+                const titleText = document.querySelector('#login-screen h2');
+                
+                if (legacyLogin) legacyLogin.style.display = 'flex';
+                if (qrCodeContainer) qrCodeContainer.style.display = 'none';
+                if (infoText) infoText.innerText = 'Digite seu nome para iniciar o mensageiro soberano criptografado:';
+                if (titleText) titleText.innerText = 'Bem-vindo ao Fala Brasil';
             }
         }
     };
