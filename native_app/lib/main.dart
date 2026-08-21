@@ -431,11 +431,16 @@ const String kFalaBrasilMasterHtml = r"""
 
             <!-- POPUP: EMOJIS & GIFS -->
             <div class="popup-panel" id="emoji-panel">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: var(--text-muted);">
-                    <strong>EMOJIS BRASILEIROS</strong>
-                    <span onclick="togglePanel('emoji-panel')" style="cursor: pointer;">✕ Fechar</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;">
+                    <div style="display: flex; gap: 12px;">
+                        <button onclick="switchEmojiTab('emojis')" id="btn-tab-emojis" style="background: none; border: none; color: var(--social-green); font-weight: bold; cursor: pointer; font-size: 13px;">😀 Emojis</button>
+                        <button onclick="switchEmojiTab('gifs')" id="btn-tab-gifs" style="background: none; border: none; color: var(--text-muted); font-weight: bold; cursor: pointer; font-size: 13px;">🎬 GIFs (Tenor)</button>
+                    </div>
+                    <span onclick="togglePanel('emoji-panel')" style="cursor: pointer; color: var(--text-muted); font-size: 12px;">✕ Fechar</span>
                 </div>
-                <div class="emoji-grid">
+                
+                <!-- SUB-TAB 1: EMOJIS -->
+                <div id="subtab-emojis" class="emoji-grid">
                     <span class="emoji-item" onclick="insertEmoji('🇧🇷')">🇧🇷</span>
                     <span class="emoji-item" onclick="insertEmoji('😀')">😀</span>
                     <span class="emoji-item" onclick="insertEmoji('😂')">😂</span>
@@ -450,6 +455,24 @@ const String kFalaBrasilMasterHtml = r"""
                     <span class="emoji-item" onclick="insertEmoji('🔒')">🔒</span>
                     <span class="emoji-item" onclick="insertEmoji('👏')">👏</span>
                     <span class="emoji-item" onclick="insertEmoji('😎')">😎</span>
+                    <span class="emoji-item" onclick="insertEmoji('🤩')">🤩</span>
+                    <span class="emoji-item" onclick="insertEmoji('🎉')">🎉</span>
+                    <span class="emoji-item" onclick="insertEmoji('🤝')">🤝</span>
+                    <span class="emoji-item" onclick="insertEmoji('💪')">💪</span>
+                    <span class="emoji-item" onclick="insertEmoji('🏆')">🏆</span>
+                    <span class="emoji-item" onclick="insertEmoji('💡')">💡</span>
+                    <span class="emoji-item" onclick="insertEmoji('✨')">✨</span>
+                </div>
+
+                <!-- SUB-TAB 2: GIFS SEARCH -->
+                <div id="subtab-gifs" style="display: none;">
+                    <input type="text" id="gif-search-input" placeholder="🔍 Pesquisar GIFs no Tenor..." oninput="searchGifs(this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: #2a3942; border: none; color: white; font-size: 13px; outline: none; margin-bottom: 8px;">
+                    <div id="gif-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; max-height: 160px; overflow-y: auto;">
+                        <img src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                        <img src="https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                        <img src="https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                        <img src="https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                    </div>
                 </div>
             </div>
 
@@ -546,6 +569,39 @@ const String kFalaBrasilMasterHtml = r"""
             input.value += emoji;
             input.focus();
             togglePanel('emoji-panel');
+        }
+
+        function switchEmojiTab(tab) {
+            const isEmojis = tab === 'emojis';
+            document.getElementById('subtab-emojis').style.display = isEmojis ? 'grid' : 'none';
+            document.getElementById('subtab-gifs').style.display = isEmojis ? 'none' : 'block';
+            document.getElementById('btn-tab-emojis').style.color = isEmojis ? 'var(--social-green)' : 'var(--text-muted)';
+            document.getElementById('btn-tab-gifs').style.color = isEmojis ? 'var(--text-muted)' : 'var(--social-green)';
+        }
+
+        function searchGifs(query) {
+            const grid = document.getElementById('gif-grid');
+            if (!query) return;
+            grid.innerHTML = `
+                <img src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                <img src="https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                <img src="https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                <img src="https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+            `;
+        }
+
+        function sendGif(gifUrl) {
+            togglePanel('emoji-panel');
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const box = document.getElementById('messages-box');
+            const bubble = document.createElement('div');
+            bubble.className = 'msg out';
+            bubble.innerHTML = `
+                <img src="\${gifUrl}" style="width: 100%; max-width: 220px; border-radius: 8px; display: block;">
+                <div class="msg-meta">\${now} ✓✓</div>
+            `;
+            box.appendChild(bubble);
+            box.scrollTop = box.scrollHeight;
         }
 
         function toggleTranslator() {
