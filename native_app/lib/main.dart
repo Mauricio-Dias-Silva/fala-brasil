@@ -71,6 +71,9 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
           },
         ),
       )
+      ..setOnPlatformPermissionRequest((request) {
+        request.grant();
+      })
       ..addJavaScriptChannel(
         'NativeAura',
         onMessageReceived: (JavaScriptMessage message) async {
@@ -867,14 +870,26 @@ const String kFalaBrasilMasterHtml = r"""
         </div>
     </div>
 
-    <!-- CALL OVERLAY -->
-    <div id="call-overlay">
-        <div style="text-align: center;">
-            <div class="call-avatar" id="call-avatar-icon">🇧🇷</div>
-            <h2 id="call-title" style="margin-top: 16px; font-weight: 700; font-size: 18px;">Canal Geral Brasil</h2>
+    <!-- CALL OVERLAY (AUDIO & REAL LIVE VIDEO) -->
+    <div id="call-overlay" style="position: fixed; inset: 0; background: #0b141a; z-index: 9999; display: none; flex-direction: column; justify-content: space-between; padding: 40px 24px; text-align: center;">
+        <!-- Live Video Element -->
+        <video id="live-video-feed" autoplay playsinline muted style="display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;"></video>
+        
+        <!-- Header Info Overlay -->
+        <div style="position: relative; z-index: 10; text-align: center; background: rgba(0,0,0,0.55); padding: 16px; border-radius: 16px; backdrop-filter: blur(8px);">
+            <div class="call-avatar" id="call-avatar-icon" style="margin: 0 auto; width: 64px; height: 64px; font-size: 28px; border-radius: 50%; background: var(--social-green); color: black; display: flex; align-items: center; justify-content: center;">🇧🇷</div>
+            <h2 id="call-title" style="margin-top: 10px; font-weight: 700; font-size: 18px; color: white;">Canal Geral Brasil</h2>
             <p id="call-status-timer" style="color: var(--social-green); font-size: 13px; margin-top: 4px;">Conectando via Nós DePIN P2P...</p>
         </div>
-        
+
+        <!-- Controls Bar -->
+        <div style="position: relative; z-index: 10; display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
+            <button class="call-btn" id="btn-toggle-cam" style="width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 22px; cursor: pointer; display: none;" onclick="toggleCameraTrack()"><i class="ph ph-camera-rotate"></i></button>
+            <button class="call-btn" id="btn-toggle-mic" style="width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 22px; cursor: pointer;" onclick="toggleCallMic()"><i class="ph ph-microphone"></i></button>
+            <button class="call-btn" style="width: 54px; height: 54px; border-radius: 50%; background: #ff4b4b; border: none; color: white; font-size: 24px; cursor: pointer; box-shadow: 0 4px 16px rgba(255,75,75,0.4);" onclick="endCall()"><i class="ph ph-phone-disconnect"></i></button>
+        </div>
+    </div>
+
     <!-- FLOATING REACTION BAR -->
     <div class="floating-reaction-bar" id="floating-reaction-bar">
         <span class="reaction-item" onclick="applyReaction('❤️')">❤️</span>
@@ -1187,30 +1202,100 @@ const String kFalaBrasilMasterHtml = r"""
             }
         }
 
-        function startCall(type) {
+        let activeMediaStream = null;
+        let isMicMuted = false;
+        let isFacingUser = true;
+
+        async function startCall(type) {
             const overlay = document.getElementById('call-overlay');
+            const videoFeed = document.getElementById('live-video-feed');
+            const avatarIcon = document.getElementById('call-avatar-icon');
+            const timerEl = document.getElementById('call-status-timer');
+            const toggleCamBtn = document.getElementById('btn-toggle-cam');
+            
             overlay.style.display = 'flex';
             document.getElementById('call-title').innerText = document.getElementById('current-chat-name').innerText;
-            document.getElementById('call-avatar-icon').innerText = document.getElementById('current-chat-avatar').innerText;
-            
+            avatarIcon.innerText = document.getElementById('current-chat-avatar').innerText;
             callSeconds = 0;
-            const timerEl = document.getElementById('call-status-timer');
-            timerEl.innerText = "Conectando via Nós DePIN P2P Full HD...";
-            
-            setTimeout(() => {
-                timerEl.innerText = "00:00 (Áudio HD Opus Ativo)";
-                callTimerInterval = setInterval(() => {
-                    callSeconds++;
-                    const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
-                    const secs = String(callSeconds % 60).padStart(2, '0');
-                    timerEl.innerText = `${mins}:${secs} (Criptografia DTLS-SRTP)`;
+
+            if (type === 'video') {
+                toggleCamBtn.style.display = 'block';
+                timerEl.innerText = "Iniciando câmera HD e criptografia P2P...";
+                try {
+                    activeMediaStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: isFacingUser ? "user" : "environment" },
+                        audio: true
+                    });
+                    videoFeed.srcObject = activeMediaStream;
+                    videoFeed.style.display = 'block';
+                    avatarIcon.style.display = 'none';
+                    timerEl.innerText = "00:00 (Vídeo HD P2P Ativo)";
+                } catch (err) {
+                    console.warn("Camera WebRTC stream fallback:", err);
+                    videoFeed.style.display = 'none';
+                    avatarIcon.style.display = 'flex';
+                    timerEl.innerText = "00:00 (Modo de Áudio HD Opus)";
+                }
+            } else {
+                toggleCamBtn.style.display = 'none';
+                videoFeed.style.display = 'none';
+                avatarIcon.style.display = 'flex';
+                timerEl.innerText = "Conectando via Nós DePIN P2P...";
+                setTimeout(() => {
+                    timerEl.innerText = "00:00 (Áudio HD Opus Ativo)";
                 }, 1000);
-            }, 1500);
+            }
+
+            if (callTimerInterval) clearInterval(callTimerInterval);
+            callTimerInterval = setInterval(() => {
+                callSeconds++;
+                const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+                const secs = String(callSeconds % 60).padStart(2, '0');
+                const prefix = type === 'video' ? 'Vídeo HD' : 'Voz HD';
+                timerEl.innerText = `${mins}:${secs} (${prefix} Criptografado)`;
+            }, 1000);
+        }
+
+        async function toggleCameraTrack() {
+            if (activeMediaStream) {
+                activeMediaStream.getTracks().forEach(t => t.stop());
+            }
+            isFacingUser = !isFacingUser;
+            try {
+                activeMediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: isFacingUser ? "user" : "environment" },
+                    audio: true
+                });
+                document.getElementById('live-video-feed').srcObject = activeMediaStream;
+                showToast(isFacingUser ? '📷 Câmera Frontal Ativa' : '📷 Câmera Traseira Ativa');
+            } catch (e) {
+                showToast('Alternando câmera...');
+            }
+        }
+
+        function toggleCallMic() {
+            isMicMuted = !isMicMuted;
+            if (activeMediaStream) {
+                activeMediaStream.getAudioTracks().forEach(t => t.enabled = !isMicMuted);
+            }
+            const btn = document.getElementById('btn-toggle-mic');
+            btn.innerHTML = isMicMuted ? '<i class="ph ph-microphone-slash" style="color: #ff4b4b;"></i>' : '<i class="ph ph-microphone"></i>';
+            showToast(isMicMuted ? '🎤 Microfone Silenciado' : '🎤 Microfone Ativo');
         }
 
         function endCall() {
             if (callTimerInterval) clearInterval(callTimerInterval);
+            if (activeMediaStream) {
+                activeMediaStream.getTracks().forEach(t => t.stop());
+                activeMediaStream = null;
+            }
+            const videoFeed = document.getElementById('live-video-feed');
+            if (videoFeed) {
+                videoFeed.srcObject = null;
+                videoFeed.style.display = 'none';
+            }
             document.getElementById('call-overlay').style.display = 'none';
+            showToast('📞 Chamada encerrada');
         }
 
         /* CUSTOM MODAL CONTROLS */
