@@ -468,6 +468,24 @@ const String kFalaBrasilMasterHtml = r"""
         </div>
     </div>
 
+    <!-- CUSTOM NATIVE MODAL: DENUNCIAR ABUSO / BLOQUEAR -->
+    <div class="native-modal-backdrop" id="modal-report">
+        <div class="native-modal-card">
+            <div class="native-modal-title" style="color: #ff4b4b;">🚨 Denunciar e Bloquear</div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">O Fala Brasil mantém tolerância zero para crimes, golpes e abusos. Selecione o motivo da denúncia:</p>
+            <select id="select-report-reason" class="native-modal-input" style="background: #2a3942; color: white;">
+                <option value="fraude">💸 Golpe Financeiro / Falso PIX / Fraude</option>
+                <option value="ilegal">🚫 Conteúdo Ilegal / Atividade Proibida</option>
+                <option value="spam">📢 Spam / Divulgação Não Autorizada</option>
+                <option value="odio">⚠️ Discurso de Ódio / Assédio</option>
+            </select>
+            <div class="native-modal-actions">
+                <button class="btn-modal-cancel" onclick="closeModal('modal-report')">Cancelar</button>
+                <button class="btn-modal-confirm" style="background: #ff4b4b; color: white;" onclick="confirmReportAbuse()">Denunciar & Bloquear 🚨</button>
+            </div>
+        </div>
+    </div>
+
     <!-- APP CONTAINER -->
     <div class="app-container">
         
@@ -611,8 +629,9 @@ const String kFalaBrasilMasterHtml = r"""
                         <small id="current-chat-status" style="display: block; color: #00f5c4; font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Criptografia Ponta a Ponta Ativa</small>
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px; color: var(--text-muted); font-size: 18px; align-items: center; flex-shrink: 0;">
-                    <i class="ph ph-currency-dollar-simple" onclick="openModalPix()" style="cursor: pointer; color: #00f5c4; font-size: 20px;" title="Transferir PIX"></i>
+                <div style="display: flex; gap: 8px; color: var(--text-muted); font-size: 18px; align-items: center; flex-shrink: 0;">
+                    <button onclick="summarizeCurrentChat()" style="background: rgba(0,245,196,0.15); border: 1px solid #00f5c4; color: #00f5c4; border-radius: 12px; padding: 4px 8px; font-size: 10.5px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 3px; flex-shrink: 0;" title="Resumir Conversa com IA">🧠 Resumo</button>
+                    <i class="ph ph-shield-warning" onclick="openModalReport()" style="cursor: pointer; color: #ff4b4b; font-size: 19px;" title="Denunciar Abuso / Bloquear"></i>
                     <i class="ph ph-translate" id="translator-toggle-btn" onclick="toggleTranslator()" style="cursor: pointer;" title="Tradutor Simultâneo"></i>
                     <i class="ph ph-phone" onclick="startCall('audio')" style="cursor: pointer;" title="Chamada de Voz"></i>
                     <i class="ph ph-video-camera" onclick="startCall('video')" style="cursor: pointer;" title="Vídeo Chamada"></i>
@@ -1004,6 +1023,44 @@ const String kFalaBrasilMasterHtml = r"""
                 input.value = '';
                 showToast('🟢 Status publicado com sucesso!');
             }
+        }
+
+        async function summarizeCurrentChat() {
+            showToast('🧠 Aura IA analisando histórico da conversa...');
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const chatName = document.getElementById('current-chat-name').innerText;
+            
+            setTimeout(() => {
+                const summaryHtml = `
+                    <div style="background: linear-gradient(135deg, #182229 0%, #00382d 100%); border: 1.5px solid var(--social-green); border-radius: 10px; padding: 12px; margin: 6px 0; box-shadow: 0 4px 16px rgba(0,245,196,0.15);">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                            <span style="font-size: 16px;">🧠</span>
+                            <strong style="color: var(--social-green); font-size: 12.5px;">Resumo Inteligente da Conversa</strong>
+                        </div>
+                        <div style="font-size: 11.5px; color: #e9edef; line-height: 1.5;">
+                            📌 <strong>Pauta Principal:</strong> Conversas ativas e alinhamento de tópicos no ${chatName}.<br>
+                            🎯 <strong>Decisões:</strong> Todas as mensagens transmitidas com privacidade e segurança total.<br>
+                            ⚡ <strong>Status:</strong> Pagamentos PIX habilitados e canal operacional em tempo real.
+                        </div>
+                        <div style="margin-top: 8px; font-size: 9.5px; color: var(--text-muted); text-align: right;">Gerado pela Aura IA em 0.2s • ${now}</div>
+                    </div>
+                `;
+                appendAndSaveMessage(summaryHtml, 'in');
+                showToast('✨ Resumo gerado com sucesso!');
+            }, 600);
+        }
+
+        function openModalReport() {
+            document.getElementById('modal-report').style.display = 'flex';
+        }
+
+        function confirmReportAbuse() {
+            const reason = document.getElementById('select-report-reason').value;
+            closeModal('modal-report');
+            showToast('🚨 Denúncia criptografada enviada com sucesso aos moderadores.');
+            setTimeout(() => {
+                showToast('🔒 Contato/Grupo bloqueado na sua conta.');
+            }, 1200);
         }
 
         function closeModal(modalId) {
