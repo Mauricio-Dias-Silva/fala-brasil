@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -57,7 +58,7 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
+    final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0xFF0B141A))
       ..setUserAgent("AuraSovereignApp/2.0 (Android)")
@@ -70,13 +71,17 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
             debugPrint("Aviso WebView: ${error.description}");
           },
         ),
-      )
-      ..setOnPlatformPermissionRequest((request) {
+      );
+
+    if (controller.platform is AndroidWebViewController) {
+      (controller.platform as AndroidWebViewController).setOnPlatformPermissionRequest((request) {
         request.grant();
-      })
-      ..addJavaScriptChannel(
-        'NativeAura',
-        onMessageReceived: (JavaScriptMessage message) async {
+      });
+    }
+
+    controller.addJavaScriptChannel(
+      'NativeAura',
+      onMessageReceived: (JavaScriptMessage message) async {
           try {
             final data = jsonDecode(message.message);
             final action = data['action'];
@@ -105,6 +110,7 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
         },
       );
 
+    _controller = controller;
     _loadApp();
   }
 
