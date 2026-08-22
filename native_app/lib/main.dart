@@ -1189,7 +1189,7 @@ const String kFalaBrasilMasterHtml = r"""
         }
 
         function inviteContact(name, tel) {
-            const text = `🇧🇷 Fala Brasil — Mensageiro Soberano Nacional\n\nOlá ${name}! Estou te enviando uma mensagem criptografada pelo Fala Brasil.\n\n📲 Baixe o App Oficial Android (APK Direto):\nhttps://auracloud.com.br/downloads/falabrasil.apk\n\n🌐 Ou acesse pelo navegador:\nhttps://auracloud.com.br/falabrasil/`;
+            const text = `🇧🇷 Fala Brasil — Mensagens, Chamadas & PIX\n\nOlá ${name}! Estou te enviando uma mensagem pelo Fala Brasil.\n\n📲 Baixe o Aplicativo Oficial para Android (Download Direto):\nhttps://github.com/Mauricio-Dias-Silva/fala-brasil/releases/download/v1.0.0/FalaBrasil.apk\n\n🌐 Ou use direto no navegador:\nhttps://auracloud.com.br/falabrasil/`;
             if (window.NativeAura) {
                 window.NativeAura.postMessage(JSON.stringify({ action: 'shareInvite', text: text, tel: tel || '' }));
             } else {
