@@ -101,6 +101,8 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
               _pickGallery();
             } else if (action == 'pickDoc') {
               _pickDocument();
+            } else if (action == 'minimizeApp') {
+              SystemNavigator.pop();
             } else if (action == 'vibrate') {
               HapticFeedback.mediumImpact();
             }
@@ -208,36 +210,43 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            WebViewWidget(controller: _controller),
-            if (_isLoading)
-              Container(
-                color: const Color(0xFF0B141A),
-                child: const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('🇧🇷', style: TextStyle(fontSize: 52)),
-                      SizedBox(height: 20),
-                      CircularProgressIndicator(color: Color(0xFF00F5C4)),
-                      SizedBox(height: 16),
-                      Text(
-                        "FALA BRASIL",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 3),
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        "Mensagens, Chamadas HD & IA Integrada",
-                        style: TextStyle(color: Colors.white54, fontSize: 11),
-                      ),
-                    ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _controller.runJavaScript("if (window.handleAndroidBackPress) { window.handleAndroidBackPress(); }");
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Stack(
+            children: [
+              WebViewWidget(controller: _controller),
+              if (_isLoading)
+                Container(
+                  color: const Color(0xFF0B141A),
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('🇧🇷', style: TextStyle(fontSize: 52)),
+                        SizedBox(height: 20),
+                        CircularProgressIndicator(color: Color(0xFF00F5C4)),
+                        SizedBox(height: 16),
+                        Text(
+                          "FALA BRASIL",
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 3),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          "Mensagens, Chamadas HD & IA Integrada",
+                          style: TextStyle(color: Colors.white54, fontSize: 11),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1794,6 +1803,51 @@ const String kFalaBrasilMasterHtml = r"""
                 }, 400);
             }
         }
+
+        window.handleAndroidBackPress = function() {
+            // 1. Close call overlay if active
+            const callOverlay = document.getElementById('call-overlay');
+            if (callOverlay && callOverlay.style.display === 'flex') {
+                endCall();
+                return;
+            }
+            // 2. Close status modal if open
+            const statusModal = document.getElementById('status-modal');
+            if (statusModal && statusModal.style.display === 'flex') {
+                closeStatusModal();
+                return;
+            }
+            // 3. Close open popup panels
+            const openPanels = document.querySelectorAll('.popup-panel.show');
+            if (openPanels.length > 0) {
+                openPanels.forEach(p => p.classList.remove('show'));
+                return;
+            }
+            // 4. Close open dropdowns
+            const dropdown = document.getElementById('options-dropdown');
+            if (dropdown && dropdown.style.display === 'flex') {
+                dropdown.style.display = 'none';
+                return;
+            }
+            // 5. Close any open native modal
+            const openModals = document.querySelectorAll('.native-modal-backdrop');
+            for (let m of openModals) {
+                if (m.style.display === 'flex') {
+                    m.style.display = 'none';
+                    return;
+                }
+            }
+            // 6. Close active chat view
+            const chatView = document.getElementById('chat-view');
+            if (chatView && chatView.classList.contains('active')) {
+                closeChatMobile();
+                return;
+            }
+            // 7. If at main root, minimize app
+            if (window.NativeAura) {
+                window.NativeAura.postMessage(JSON.stringify({ action: 'minimizeApp' }));
+            }
+        };
 
         document.addEventListener('DOMContentLoaded', () => {
             checkRegistration();
