@@ -210,7 +210,7 @@ const String kFalaBrasilMasterHtml = r"""
         #sidebar { width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-deep); z-index: 10; border-right: 1px solid rgba(255,255,255,0.06); }
         @media (min-width: 900px) { #sidebar { width: 34%; min-width: 380px; } }
         
-        header { height: 62px; background: var(--header-bg); padding: 0 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        header { height: 62px; background: var(--header-bg); padding: 0 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: relative; }
         .nav-tabs { display: flex; background: var(--header-bg); border-bottom: 2px solid rgba(255,255,255,0.06); flex-shrink: 0; }
         .tab-btn { flex: 1; padding: 12px 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 3px solid transparent; transition: all 0.2s; }
         .tab-btn.active { color: var(--social-green); border-bottom: 3px solid var(--social-green); }
@@ -286,14 +286,72 @@ const String kFalaBrasilMasterHtml = r"""
         .call-avatar { width: 110px; height: 110px; border-radius: 50%; background: #00f5c4; color: black; font-size: 48px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(0,245,196,0.4); animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.06); } 100% { transform: scale(1); } }
         .call-btn { width: 64px; height: 64px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; }
+
+        /* NATIVE CUSTOM MODAL (NO BROWSER PROMPT/ALERT) */
+        .native-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+        .native-modal-card { width: 100%; max-width: 340px; background: #1f2c34; border-radius: 14px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 16px 36px rgba(0,0,0,0.8); animation: slideUp 0.2s ease; }
+        .native-modal-title { font-size: 16px; font-weight: 700; color: white; margin-bottom: 12px; }
+        .native-modal-input { width: 100%; padding: 12px; border-radius: 8px; background: #2a3942; border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 14px; outline: none; margin-bottom: 16px; }
+        .native-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-modal-cancel { background: transparent; border: none; color: var(--text-muted); font-weight: bold; padding: 8px 14px; cursor: pointer; font-size: 13px; }
+        .btn-modal-confirm { background: var(--social-green); color: black; border: none; border-radius: 6px; font-weight: bold; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+
+        /* THREE DOTS DROPDOWN MENU */
+        #options-dropdown { position: absolute; top: 55px; right: 12px; background: #1f2c34; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none; flex-direction: column; width: 220px; z-index: 2500; overflow: hidden; }
+        .dropdown-item { padding: 12px 16px; font-size: 13px; color: var(--text-main); display: flex; align-items: center; gap: 10px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .dropdown-item:active { background: #2a3942; }
+
+        /* TOAST NOTIFICATION */
+        #toast-notice { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #00f5c4; color: black; font-weight: bold; font-size: 12px; padding: 10px 18px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 4000; display: none; animation: slideUp 0.2s ease; }
     </style>
 </head>
 <body>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-notice"></div>
 
     <!-- HIDDEN REAL FILE INPUTS FOR CAMERA, GALLERY, DOCS -->
     <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleFileUpload(this, 'camera')">
     <input type="file" id="gallery-input" accept="image/*,video/*" multiple style="display:none" onchange="handleFileUpload(this, 'gallery')">
     <input type="file" id="doc-input" accept=".pdf,.doc,.docx,.txt,.zip" multiple style="display:none" onchange="handleFileUpload(this, 'doc')">
+
+    <!-- CUSTOM NATIVE MODAL: CRIAR NOVO GRUPO -->
+    <div class="native-modal-backdrop" id="modal-group">
+        <div class="native-modal-card">
+            <div class="native-modal-title">👥 Criar Novo Grupo</div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Capacidade de até 50.000 membros com criptografia militar soberana.</p>
+            <input type="text" id="input-group-name" class="native-modal-input" placeholder="Nome do Grupo (ex: Família / Univesp)">
+            <div class="native-modal-actions">
+                <button class="btn-modal-cancel" onclick="closeModal('modal-group')">Cancelar</button>
+                <button class="btn-modal-confirm" onclick="confirmCreateGroup()">Criar Grupo 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM NATIVE MODAL: FALA PAY PIX -->
+    <div class="native-modal-backdrop" id="modal-pix">
+        <div class="native-modal-card">
+            <div class="native-modal-title">⚡ Fala Pay — Transferir PIX</div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Digite o valor para gerar o card de pagamento instantâneo no chat:</p>
+            <input type="number" id="input-pix-val" class="native-modal-input" placeholder="Valor em R$ (ex: 50.00)" value="50.00">
+            <div class="native-modal-actions">
+                <button class="btn-modal-cancel" onclick="closeModal('modal-pix')">Cancelar</button>
+                <button class="btn-modal-confirm" onclick="confirmSendPix()">Gerar PIX ⚡</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM NATIVE MODAL: ATUALIZAR STATUS -->
+    <div class="native-modal-backdrop" id="modal-status">
+        <div class="native-modal-card">
+            <div class="native-modal-title">🟢 Atualizar Meu Status</div>
+            <input type="text" id="input-status-text" class="native-modal-input" placeholder="O que você está pensando agora?">
+            <div class="native-modal-actions">
+                <button class="btn-modal-cancel" onclick="closeModal('modal-status')">Cancelar</button>
+                <button class="btn-modal-confirm" onclick="confirmPostStatus()">Publicar 🟢</button>
+            </div>
+        </div>
+    </div>
 
     <!-- APP CONTAINER -->
     <div class="app-container">
@@ -309,9 +367,18 @@ const String kFalaBrasilMasterHtml = r"""
                     </div>
                 </div>
                 <div style="display: flex; gap: 14px; font-size: 20px; color: var(--text-muted);">
-                    <i class="ph ph-user-plus" onclick="createNewGroupDialog()" style="cursor: pointer; color: #00f5c4;" title="Criar Novo Grupo"></i>
+                    <i class="ph ph-user-plus" onclick="openModalGroup()" style="cursor: pointer; color: #00f5c4;" title="Criar Novo Grupo"></i>
                     <i class="ph ph-qr-code" onclick="openScannerNative()" style="cursor: pointer;" title="Escanear QR"></i>
-                    <i class="ph ph-dots-three-vertical" onclick="showOptionsMenu()" style="cursor: pointer;"></i>
+                    <i class="ph ph-dots-three-vertical" onclick="toggleOptionsMenu()" style="cursor: pointer;"></i>
+                </div>
+
+                <!-- DROPDOWN 3 PONTINHOS -->
+                <div id="options-dropdown">
+                    <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-users-three" style="color: #00f5c4;"></i> Novo Grupo</div>
+                    <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-broadcast" style="color: #ffd700;"></i> Novo Canal (Ilimitado)</div>
+                    <div class="dropdown-item" onclick="openScannerNative()"><i class="ph ph-qr-code"></i> Aparelhos Conectados</div>
+                    <div class="dropdown-item" onclick="showToast('⭐ Mensagens favoritas sincronizadas')"><i class="ph ph-star"></i> Mensagens Favoritas</div>
+                    <div class="dropdown-item" onclick="showToast('🔒 Criptografia P2P e Sentinel Ativos')"><i class="ph ph-shield-check" style="color: #00f5c4;"></i> Privacidade & Segurança</div>
                 </div>
             </header>
 
@@ -359,7 +426,7 @@ const String kFalaBrasilMasterHtml = r"""
                         <i class="ph ph-plus" style="position: absolute; bottom: 0; right: 0; background: #00f5c4; color: black; border-radius: 50%; padding: 2px; font-size: 14px;"></i>
                         📷
                     </div>
-                    <div style="flex: 1;" onclick="postStatus()">
+                    <div style="flex: 1;" onclick="openModalStatus()">
                         <strong>Meu Status</strong>
                         <small style="display: block; color: var(--text-muted);">Toque para atualizar seu status</small>
                     </div>
@@ -427,7 +494,8 @@ const String kFalaBrasilMasterHtml = r"""
                         <small id="current-chat-status" style="display: block; color: #00f5c4; font-size: 11px;">Criptografia Ponta a Ponta Ativa</small>
                     </div>
                 </div>
-                <div style="display: flex; gap: 16px; color: var(--text-muted); font-size: 20px;">
+                <div style="display: flex; gap: 14px; color: var(--text-muted); font-size: 20px; align-items: center;">
+                    <i class="ph ph-currency-dollar-simple" onclick="openModalPix()" style="cursor: pointer; color: #00f5c4; font-size: 22px;" title="Transferir PIX"></i>
                     <i class="ph ph-translate" id="translator-toggle-btn" onclick="toggleTranslator()" style="cursor: pointer;" title="Tradutor Simultâneo"></i>
                     <i class="ph ph-phone" onclick="startCall('audio')" style="cursor: pointer;" title="Chamada de Voz"></i>
                     <i class="ph ph-video-camera" onclick="startCall('video')" style="cursor: pointer;" title="Vídeo Chamada"></i>
@@ -504,7 +572,7 @@ const String kFalaBrasilMasterHtml = r"""
                         <div class="attach-icon" style="background: #5c6bc0;"><i class="ph ph-file-text"></i></div>
                         <span style="font-size: 11px;">Documentos</span>
                     </div>
-                    <div class="attach-item" onclick="sendPixDialog()">
+                    <div class="attach-item" onclick="openModalPix()">
                         <div class="attach-icon" style="background: #00f5c4; color: black;"><i class="ph ph-currency-dollar"></i></div>
                         <span style="font-size: 11px; font-weight: bold; color: #00f5c4;">Fala Pay PIX</span>
                     </div>
@@ -523,6 +591,9 @@ const String kFalaBrasilMasterHtml = r"""
             <div class="input-bar">
                 <button class="action-btn" onclick="togglePanel('emoji-panel')"><i class="ph ph-smiley"></i></button>
                 <button class="action-btn" onclick="togglePanel('attach-panel')"><i class="ph ph-paperclip"></i></button>
+                <button onclick="openModalPix()" style="color: #000; font-weight: 800; font-size: 12px; background: #00f5c4; border: none; border-radius: 14px; padding: 6px 10px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; gap: 3px;" title="Transferir PIX">
+                    ⚡ PIX
+                </button>
                 <input type="text" id="msg-input" placeholder="Mensagem criptografada..." onkeypress="handleKeyPress(event)">
                 <button class="action-btn" id="mic-btn" onclick="toggleRecordAudio()"><i class="ph ph-microphone"></i></button>
                 <button class="send-btn" onclick="sendMessage()"><i class="ph ph-paper-plane-right"></i></button>
@@ -554,8 +625,8 @@ const String kFalaBrasilMasterHtml = r"""
         </div>
         
         <div style="display: flex; gap: 24px;">
-            <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="alert('🎤 Microfone silenciado')"><i class="ph ph-microphone-slash"></i></button>
-            <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="alert('🔊 Viva-voz ativado')"><i class="ph ph-speaker-high"></i></button>
+            <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="showToast('🎤 Microfone silenciado')"><i class="ph ph-microphone-slash"></i></button>
+            <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="showToast('🔊 Viva-voz ativado')"><i class="ph ph-speaker-high"></i></button>
             <button class="call-btn" style="background: #ff4b4b; color: white;" onclick="endCall()"><i class="ph ph-phone-disconnect"></i></button>
         </div>
     </div>
@@ -568,12 +639,20 @@ const String kFalaBrasilMasterHtml = r"""
         let callTimerInterval = null;
         let callSeconds = 0;
 
+        function showToast(text) {
+            const toast = document.getElementById('toast-notice');
+            toast.innerText = text;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             
             event.currentTarget.classList.add('active');
             document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById('options-dropdown').style.display = 'none';
         }
 
         function openRoom(roomId, roomName, icon, hasStatus) {
@@ -581,6 +660,7 @@ const String kFalaBrasilMasterHtml = r"""
             document.getElementById('current-chat-name').innerText = roomName;
             document.getElementById('current-chat-avatar').innerText = icon;
             document.getElementById('chat-view').classList.add('active');
+            document.getElementById('options-dropdown').style.display = 'none';
             loadRoomMessages();
         }
 
@@ -588,11 +668,17 @@ const String kFalaBrasilMasterHtml = r"""
             document.getElementById('chat-view').classList.remove('active');
         }
 
+        function toggleOptionsMenu() {
+            const menu = document.getElementById('options-dropdown');
+            menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+        }
+
         function togglePanel(panelId) {
             const panel = document.getElementById(panelId);
             const isShown = panel.classList.contains('show');
             document.querySelectorAll('.popup-panel').forEach(p => p.classList.remove('show'));
             if (!isShown) panel.classList.add('show');
+            document.getElementById('options-dropdown').style.display = 'none';
         }
 
         function insertEmoji(emoji) {
@@ -636,7 +722,7 @@ const String kFalaBrasilMasterHtml = r"""
             const btn = document.getElementById('translator-toggle-btn');
             if (isTranslatorActive) {
                 btn.style.color = '#00f5c4';
-                alert('🌐 Tradutor Simultâneo Ativado: Suas mensagens serão traduzidas em tempo real mantendo a criptografia!');
+                showToast('🌐 Tradutor Simultâneo Ativado');
             } else {
                 btn.style.color = 'var(--text-muted)';
             }
@@ -668,8 +754,16 @@ const String kFalaBrasilMasterHtml = r"""
             document.getElementById('call-overlay').style.display = 'none';
         }
 
-        function createNewGroupDialog() {
-            const groupName = prompt('Digite o nome do Novo Grupo (ex: Turma Univesp 2026 / Família):');
+        /* CUSTOM MODAL CONTROLS */
+        function openModalGroup() {
+            document.getElementById('options-dropdown').style.display = 'none';
+            document.getElementById('modal-group').style.display = 'flex';
+            document.getElementById('input-group-name').focus();
+        }
+
+        function confirmCreateGroup() {
+            const input = document.getElementById('input-group-name');
+            const groupName = input.value.trim();
             if (!groupName) return;
 
             const newGroupId = 'group_' + Date.now();
@@ -685,19 +779,51 @@ const String kFalaBrasilMasterHtml = r"""
                 </div>
             `;
             list.prepend(item);
+            closeModal('modal-group');
+            input.value = '';
             openRoom(newGroupId, groupName, '👥', false);
-            alert(`🎉 Grupo "${groupName}" criado com capacidade de até 50.000 membros!`);
+            showToast(`🎉 Grupo "${groupName}" criado com sucesso!`);
         }
 
-        function showOptionsMenu() {
-            alert("⚙️ Opções do Fala Brasil:\n• Novo Grupo (até 50 mil membros)\n• Novo Canal de Transmissão (Ilimitado)\n• Aparelhos Conectados via QR Code\n• Mensagens Favoritas\n• Configurações de Privacidade");
+        function openModalPix() {
+            togglePanel('attach-panel');
+            document.getElementById('modal-pix').style.display = 'flex';
         }
 
-        function postStatus() {
-            const text = prompt('O que você está pensando? (Atualização de Status):');
+        function confirmSendPix() {
+            const input = document.getElementById('input-pix-val');
+            const valor = input.value.trim() || '50.00';
+            closeModal('modal-pix');
+            
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const bubbleHtml = `
+                <strong>⚡ Fala Pay — Cobrança PIX</strong>
+                <div class="pix-card">
+                    <div style="font-size: 18px; font-weight: bold; color: #00f5c4;">R$ ${valor}</div>
+                    <small style="color: var(--text-muted);">Transferência Instantânea Soberana</small>
+                    <button class="pix-btn" onclick="showToast('✅ Código PIX de R$ ${valor} Copiado!')">Copiar Código PIX</button>
+                </div>
+                <div class="msg-meta">${now} ✓✓</div>
+            `;
+            appendAndSaveMessage(bubbleHtml, 'out');
+        }
+
+        function openModalStatus() {
+            document.getElementById('modal-status').style.display = 'flex';
+        }
+
+        function confirmPostStatus() {
+            const input = document.getElementById('input-status-text');
+            const text = input.value.trim();
+            closeModal('modal-status');
             if (text) {
-                alert('🟢 Status publicado com sucesso para todos os seus contatos!');
+                input.value = '';
+                showToast('🟢 Status publicado com sucesso!');
             }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
         }
 
         function viewStatus(author, text, bgColor) {
@@ -716,24 +842,6 @@ const String kFalaBrasilMasterHtml = r"""
 
         function closeStatusModal() {
             document.getElementById('status-modal').style.display = 'none';
-        }
-
-        function sendPixDialog() {
-            togglePanel('attach-panel');
-            const valor = prompt('Digite o valor do PIX a ser transferido (ex: 50.00):', '50.00');
-            if (!valor) return;
-            
-            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const bubbleHtml = `
-                <strong>⚡ Fala Pay — Cobrança PIX</strong>
-                <div class="pix-card">
-                    <div style="font-size: 18px; font-weight: bold; color: #00f5c4;">R$ ${valor}</div>
-                    <small style="color: var(--text-muted);">Transferência Instantânea Soberana</small>
-                    <button class="pix-btn" onclick="alert('✅ Código PIX de R$ ${valor} Copiado!')">Copiar Código PIX</button>
-                </div>
-                <div class="msg-meta">${now} ✓✓</div>
-            `;
-            appendAndSaveMessage(bubbleHtml, 'out');
         }
 
         function toggleRecordAudio() {
@@ -822,7 +930,7 @@ const String kFalaBrasilMasterHtml = r"""
                                     <strong style="font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis;">${file.name}</strong>
                                     <small style="color: var(--text-muted);">${(file.size / 1024).toFixed(1)} KB</small>
                                 </div>
-                                <button onclick="alert('Abrindo documento...')" style="background: var(--social-green); color: black; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">Baixar</button>
+                                <button onclick="showToast('Baixando documento...')" style="background: var(--social-green); color: black; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">Baixar</button>
                             </div>
                             <div class="msg-meta">${now} ✓✓</div>
                         `;
@@ -851,7 +959,7 @@ const String kFalaBrasilMasterHtml = r"""
             if (window.NativeAura) {
                 window.NativeAura.postMessage(JSON.stringify({ action: 'getContacts' }));
             } else {
-                alert('📱 Sincronizando contatos da agenda do aparelho...');
+                showToast('📱 Sincronizando contatos da agenda...');
             }
         }
 
@@ -879,7 +987,6 @@ const String kFalaBrasilMasterHtml = r"""
 
         function openDirectContact(name, tel) {
             openRoom('contact_' + name, name, '👤', false);
-            // Insere card de convite caso seja a primeira vez
             const box = document.getElementById('messages-box');
             const inviteCard = document.createElement('div');
             inviteCard.className = 'security-banner';
@@ -922,7 +1029,6 @@ const String kFalaBrasilMasterHtml = r"""
             box.appendChild(bubble);
             box.scrollTop = box.scrollHeight;
 
-            // Salva no LocalStorage da sala
             const saved = JSON.parse(localStorage.getItem('fala_history_' + currentRoom) || '[]');
             saved.push({ html: htmlContent, type: type });
             localStorage.setItem('fala_history_' + currentRoom, JSON.stringify(saved));
