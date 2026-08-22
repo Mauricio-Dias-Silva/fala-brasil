@@ -6,7 +6,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
+import 'dart:io';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,6 +87,12 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
               final String text = data['text'] ?? '';
               final String tel = data['tel'] ?? '';
               _handleShareInvite(text, tel);
+            } else if (action == 'pickCamera') {
+              _pickImage(ImageSource.camera);
+            } else if (action == 'pickGallery') {
+              _pickGallery();
+            } else if (action == 'pickDoc') {
+              _pickDocument();
             } else if (action == 'vibrate') {
               HapticFeedback.mediumImpact();
             }
@@ -94,6 +103,53 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
       );
 
     _loadApp();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(source: source, imageQuality: 75);
+      if (photo != null) {
+        final bytes = await File(photo.path).readAsBytes();
+        final base64Image = "data:image/jpeg;base64,${base64Encode(bytes)}";
+        final fileName = photo.name;
+        _controller.runJavaScript("window.onNativeMediaReceived('$base64Image', 'image', '$fileName')");
+      }
+    } catch (e) {
+      debugPrint("Erro ao capturar imagem nativa: $e");
+    }
+  }
+
+  Future<void> _pickGallery() async {
+    try {
+      final picker = ImagePicker();
+      final List<XFile> images = await picker.pickMultiImage(imageQuality: 75);
+      for (var photo in images) {
+        final bytes = await File(photo.path).readAsBytes();
+        final base64Image = "data:image/jpeg;base64,${base64Encode(bytes)}";
+        final fileName = photo.name;
+        _controller.runJavaScript("window.onNativeMediaReceived('$base64Image', 'image', '$fileName')");
+      }
+    } catch (e) {
+      debugPrint("Erro ao abrir galeria nativa: $e");
+    }
+  }
+
+  Future<void> _pickDocument() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'zip', 'xlsx', 'csv', 'mp3'],
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final fileName = file.name;
+        final fileSize = "${(file.size / 1024).toStringAsFixed(1)} KB";
+        _controller.runJavaScript("window.onNativeDocReceived('$fileName', '$fileSize')");
+      }
+    } catch (e) {
+      debugPrint("Erro ao selecionar documento nativo: $e");
+    }
   }
 
   Future<void> _handleShareInvite(String text, String tel) async {
@@ -1134,17 +1190,67 @@ const String kFalaBrasilMasterHtml = r"""
 
         function triggerCamera() {
             togglePanel('attach-panel');
-            document.getElementById('camera-input').click();
+            if (window.NativeAura) {
+                window.NativeAura.postMessage(JSON.stringify({ action: 'pickCamera' }));
+            } else {
+                document.getElementById('camera-input').click();
+            }
         }
 
         function triggerMediaUpload() {
             togglePanel('attach-panel');
-            document.getElementById('gallery-input').click();
+            if (window.NativeAura) {
+                window.NativeAura.postMessage(JSON.stringify({ action: 'pickGallery' }));
+            } else {
+                document.getElementById('gallery-input').click();
+            }
         }
 
         function triggerDocUpload() {
             togglePanel('attach-panel');
-            document.getElementById('doc-input').click();
+            if (window.NativeAura) {
+                window.NativeAura.postMessage(JSON.stringify({ action: 'pickDoc' }));
+            } else {
+                document.getElementById('doc-input').click();
+            }
+        }
+
+        window.onNativeMediaReceived = function(base64Data, type, fileName) {
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const bubbleHtml = `
+                <img src="${base64Data}" onclick="openFullscreenMedia('${base64Data}')" style="width: 100%; max-width: 250px; border-radius: 8px; display: block; margin-bottom: 4px; cursor: pointer;">
+                <small style="color: var(--text-muted);">${fileName || 'Foto'}</small>
+                <div class="msg-meta">${now} ✓✓</div>
+            `;
+            appendAndSaveMessage(bubbleHtml, 'out');
+            showToast('📷 Foto enviada com sucesso!');
+        };
+
+        window.onNativeDocReceived = function(fileName, fileSize) {
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const bubbleHtml = `
+                <div style="display: flex; align-items: center; gap: 8px; background: #182229; padding: 8px 12px; border-radius: 8px; border-left: 3px solid #00f5c4;">
+                    <i class="ph ph-file-text" style="font-size: 26px; color: #00f5c4;"></i>
+                    <div style="flex: 1; min-width: 0;">
+                        <strong style="font-size: 12.5px; display: block; overflow: hidden; text-overflow: ellipsis;">${fileName}</strong>
+                        <small style="color: var(--text-muted); font-size: 10.5px;">${fileSize} • Arquivo Seguro</small>
+                    </div>
+                    <button onclick="showToast('📄 Abrindo documento ${fileName}...')" style="background: var(--social-green); color: black; border: none; padding: 5px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 10.5px;">Abrir</button>
+                </div>
+                <div class="msg-meta">${now} ✓✓</div>
+            `;
+            appendAndSaveMessage(bubbleHtml, 'out');
+            showToast('📄 Documento enviado com sucesso!');
+        };
+
+        function openFullscreenMedia(src) {
+            const modal = document.getElementById('status-modal');
+            modal.style.display = 'flex';
+            modal.style.background = 'black';
+            document.getElementById('status-author-name').innerText = 'Foto / Mídia';
+            document.getElementById('status-author-avatar').innerText = '📷';
+            document.getElementById('status-text-content').innerHTML = `<img src="${src}" style="max-width: 95vw; max-height: 80vh; object-fit: contain; border-radius: 8px;">`;
+            document.getElementById('status-fill').style.width = '100%';
         }
 
         function handleFileUpload(input, type) {
@@ -1159,7 +1265,7 @@ const String kFalaBrasilMasterHtml = r"""
                     let contentHtml = '';
                     if (type === 'camera' || type === 'gallery') {
                         contentHtml = `
-                            <img src="${e.target.result}" style="width: 100%; max-width: 230px; border-radius: 8px; display: block; margin-bottom: 4px;">
+                            <img src="${e.target.result}" onclick="openFullscreenMedia('${e.target.result}')" style="width: 100%; max-width: 230px; border-radius: 8px; display: block; margin-bottom: 4px; cursor: pointer;">
                             <small style="color: var(--text-muted);">${file.name}</small>
                             <div class="msg-meta">${now} ✓✓</div>
                         `;
@@ -1189,7 +1295,7 @@ const String kFalaBrasilMasterHtml = r"""
             const bubbleHtml = `
                 <strong>📍 Localização em Tempo Real</strong>
                 <div style="background: #182229; border-radius: 8px; padding: 6px 10px; margin-top: 4px; font-size: 11.5px; color: #00f5c4;">
-                    🗺️ São Paulo, SP (Coordenadas Soberanas Seguras)
+                    🗺️ São Paulo, SP (Coordenadas Seguras)
                 </div>
                 <div class="msg-meta">${now} ✓✓</div>
             `;
