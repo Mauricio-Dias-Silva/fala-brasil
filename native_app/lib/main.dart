@@ -336,10 +336,17 @@ const String kFalaBrasilMasterHtml = r"""
         @media (min-width: 900px) { #chat-view { position: relative; flex: 1; transform: translateX(0); z-index: 5; } }
         
         .messages-box { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png') repeat; background-color: #0b141a; }
-        .msg { max-width: 85%; padding: 8px 10px; border-radius: 10px; font-size: 13.5px; position: relative; line-height: 1.4; word-wrap: break-word; }
+        .msg { max-width: 85%; padding: 8px 10px; border-radius: 10px; font-size: 13.5px; position: relative; line-height: 1.4; word-wrap: break-word; cursor: pointer; }
         .msg.in { align-self: flex-start; background: var(--bubble-in); color: var(--text-main); }
         .msg.out { align-self: flex-end; background: var(--bubble-out); color: #fff; }
         .msg-meta { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+        
+        /* MESSAGE REACTIONS */
+        .msg-reaction-badge { position: absolute; bottom: -8px; right: 8px; background: #1f2c34; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 1px 5px; font-size: 11px; display: inline-flex; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 2; }
+        .floating-reaction-bar { position: fixed; background: #1f2c34; border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; padding: 6px 12px; display: none; gap: 10px; font-size: 22px; z-index: 5000; box-shadow: 0 8px 24px rgba(0,0,0,0.7); animation: popUp 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popUp { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+        .reaction-item { cursor: pointer; transition: transform 0.15s; }
+        .reaction-item:active { transform: scale(1.3); }
         
         /* AUDIO PLAYER IN BUBBLE */
         .audio-bubble { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
@@ -567,6 +574,7 @@ const String kFalaBrasilMasterHtml = r"""
                     <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-broadcast" style="color: #ffd700;"></i> Novo Canal (Ilimitado)</div>
                     <div class="dropdown-item" onclick="openModalPix()"><i class="ph ph-currency-dollar" style="color: #00f5c4;"></i> Fala Pay PIX & Carteira</div>
                     <div class="dropdown-item" onclick="openScannerNative()"><i class="ph ph-qr-code"></i> Aparelhos Conectados</div>
+                    <div class="dropdown-item" onclick="toggleTheme()"><i class="ph ph-palette" style="color: #00d1ff;"></i> Alternar Tema Visual</div>
                     <div class="dropdown-item" onclick="showToast('⭐ Mensagens favoritas sincronizadas')"><i class="ph ph-star"></i> Mensagens Favoritas</div>
                     <div class="dropdown-item" onclick="resetAccountData()"><i class="ph ph-sign-out" style="color: #ff4b4b;"></i> Trocar de Número / Sair</div>
                 </div>
@@ -578,6 +586,14 @@ const String kFalaBrasilMasterHtml = r"""
                 <div class="tab-btn" onclick="switchTab('status')">Status 🟢</div>
                 <div class="tab-btn" onclick="switchTab('contacts')">Contatos 👥</div>
                 <div class="tab-btn" onclick="switchTab('calls')">Chamadas 📞</div>
+            </div>
+
+            <!-- SEARCH BAR REAL-TIME -->
+            <div style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);">
+                <div style="background: #182229; border-radius: 8px; display: flex; align-items: center; padding: 6px 10px; gap: 6px;">
+                    <i class="ph ph-magnifying-glass" style="color: var(--text-muted); font-size: 15px;"></i>
+                    <input type="text" id="global-search-input" placeholder="Pesquisar conversas e contatos..." oninput="filterRoomsAndContacts(this.value)" style="background: transparent; border: none; outline: none; color: white; font-size: 12.5px; width: 100%;">
+                </div>
             </div>
 
             <!-- TAB 1: CONVERSAS -->
@@ -816,11 +832,15 @@ const String kFalaBrasilMasterHtml = r"""
             <p id="call-status-timer" style="color: var(--social-green); font-size: 13px; margin-top: 4px;">Conectando via Nós DePIN P2P...</p>
         </div>
         
-        <div style="display: flex; gap: 20px;">
-            <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="showToast('🎤 Microfone silenciado')"><i class="ph ph-microphone-slash"></i></button>
-            <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="showToast('🔊 Viva-voz ativado')"><i class="ph ph-speaker-high"></i></button>
-            <button class="call-btn" style="background: #ff4b4b; color: white;" onclick="endCall()"><i class="ph ph-phone-disconnect"></i></button>
-        </div>
+    <!-- FLOATING REACTION BAR -->
+    <div class="floating-reaction-bar" id="floating-reaction-bar">
+        <span class="reaction-item" onclick="applyReaction('❤️')">❤️</span>
+        <span class="reaction-item" onclick="applyReaction('👍')">👍</span>
+        <span class="reaction-item" onclick="applyReaction('😂')">😂</span>
+        <span class="reaction-item" onclick="applyReaction('😮')">😮</span>
+        <span class="reaction-item" onclick="applyReaction('😢')">😢</span>
+        <span class="reaction-item" onclick="applyReaction('🙏')">🙏</span>
+        <span class="reaction-item" onclick="applyReaction('🇧🇷')">🇧🇷</span>
     </div>
 
     <script>
@@ -831,6 +851,14 @@ const String kFalaBrasilMasterHtml = r"""
         let isRecording = false;
         let callTimerInterval = null;
         let callSeconds = 0;
+        let activeTargetBubble = null;
+        let currentThemeIndex = 0;
+
+        const themes = [
+            { bgDeep: '#0b141a', surface: '#111b21', headerBg: '#202c33', bubbleOut: '#005c4b', socialGreen: '#00f5c4', name: 'Dark Padrão' },
+            { bgDeep: '#051814', surface: '#0a231d', headerBg: '#0f332a', bubbleOut: '#026c54', socialGreen: '#25d366', name: 'Esmeralda Brasil' },
+            { bgDeep: '#0e1621', surface: '#17212b', headerBg: '#242f3d', bubbleOut: '#2b5278', socialGreen: '#64b5f6', name: 'Azul Meia-Noite' }
+        ];
 
         function checkRegistration() {
             const isRegistered = localStorage.getItem('fala_registered') === 'true';
@@ -1370,10 +1398,68 @@ const String kFalaBrasilMasterHtml = r"""
             if (e.key === 'Enter') sendMessage();
         }
 
+        function toggleTheme() {
+            currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+            const t = themes[currentThemeIndex];
+            document.documentElement.style.setProperty('--bg-deep', t.bgDeep);
+            document.documentElement.style.setProperty('--surface', t.surface);
+            document.documentElement.style.setProperty('--header-bg', t.headerBg);
+            document.documentElement.style.setProperty('--bubble-out', t.bubbleOut);
+            document.documentElement.style.setProperty('--social-green', t.socialGreen);
+            document.getElementById('options-dropdown').style.display = 'none';
+            showToast(`🎨 Tema: ${t.name}`);
+        }
+
+        function filterRoomsAndContacts(query) {
+            const q = query.toLowerCase().trim();
+            document.querySelectorAll('#rooms-list .chat-item').forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(q) ? 'flex' : 'none';
+            });
+            document.querySelectorAll('#contacts-list .chat-item').forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(q) ? 'flex' : 'none';
+            });
+        }
+
+        function showMessageReactions(e, bubble) {
+            e.stopPropagation();
+            activeTargetBubble = bubble;
+            const rect = bubble.getBoundingClientRect();
+            const bar = document.getElementById('floating-reaction-bar');
+            bar.style.display = 'flex';
+            bar.style.top = Math.max(10, rect.top - 48) + 'px';
+            bar.style.left = Math.min(window.innerWidth - 260, Math.max(10, rect.left)) + 'px';
+        }
+
+        function applyReaction(emoji) {
+            if (activeTargetBubble) {
+                let badge = activeTargetBubble.querySelector('.msg-reaction-badge');
+                if (!badge) {
+                    badge = document.createElement('div');
+                    badge.className = 'msg-reaction-badge';
+                    activeTargetBubble.appendChild(badge);
+                }
+                badge.innerText = emoji;
+                if (window.NativeAura) {
+                    window.NativeAura.postMessage(JSON.stringify({ action: 'vibrate' }));
+                }
+            }
+            document.getElementById('floating-reaction-bar').style.display = 'none';
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#floating-reaction-bar') && !e.target.closest('.msg')) {
+                const bar = document.getElementById('floating-reaction-bar');
+                if (bar) bar.style.display = 'none';
+            }
+        });
+
         function appendAndSaveMessage(htmlContent, type) {
             const box = document.getElementById('messages-box');
             const bubble = document.createElement('div');
             bubble.className = 'msg ' + type;
+            bubble.setAttribute('onclick', 'showMessageReactions(event, this)');
             bubble.innerHTML = htmlContent;
             box.appendChild(bubble);
             box.scrollTop = box.scrollHeight;
@@ -1395,12 +1481,14 @@ const String kFalaBrasilMasterHtml = r"""
             if (saved.length === 0) {
                 const bubble = document.createElement('div');
                 bubble.className = 'msg in';
+                bubble.setAttribute('onclick', 'showMessageReactions(event, this)');
                 bubble.innerHTML = `<strong>Aura Sentinel:</strong> Canal soberano criptografado ativo.<div class="msg-meta">Agora ✓✓</div>`;
                 box.appendChild(bubble);
             } else {
                 saved.forEach(m => {
                     const bubble = document.createElement('div');
                     bubble.className = 'msg ' + m.type;
+                    bubble.setAttribute('onclick', 'showMessageReactions(event, this)');
                     bubble.innerHTML = m.html;
                     box.appendChild(bubble);
                 });
