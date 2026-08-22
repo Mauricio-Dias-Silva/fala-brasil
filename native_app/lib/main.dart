@@ -863,13 +863,15 @@ const String kFalaBrasilMasterHtml = r"""
             list.forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'chat-item';
-                item.onclick = () => openDirectContact(c.name, c.tel);
                 item.innerHTML = `
-                    <div class="avatar" style="background: #202c33; color: #00f5c4;">${c.name[0]}</div>
-                    <div class="chat-info">
+                    <div class="avatar" style="background: #202c33; color: #00f5c4;" onclick="openDirectContact('${c.name}', '${c.tel}')">${c.name[0]}</div>
+                    <div class="chat-info" onclick="openDirectContact('${c.name}', '${c.tel}')">
                         <div class="chat-name">${c.name}</div>
                         <div class="chat-preview">${c.tel || 'Iniciar conversa soberana'}</div>
                     </div>
+                    <button onclick="inviteContact('${c.name}', '${c.tel}')" style="background: rgba(0,245,196,0.15); border: 1px solid var(--social-green); color: var(--social-green); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; flex-shrink: 0;">
+                        Convidar 💬
+                    </button>
                 `;
                 container.appendChild(item);
             });
@@ -877,6 +879,29 @@ const String kFalaBrasilMasterHtml = r"""
 
         function openDirectContact(name, tel) {
             openRoom('contact_' + name, name, '👤', false);
+            // Insere card de convite caso seja a primeira vez
+            const box = document.getElementById('messages-box');
+            const inviteCard = document.createElement('div');
+            inviteCard.className = 'security-banner';
+            inviteCard.style.background = 'rgba(0, 245, 196, 0.1)';
+            inviteCard.style.borderColor = 'var(--social-green)';
+            inviteCard.innerHTML = `
+                <div style="flex: 1;">
+                    <strong style="color: white; display: block; margin-bottom: 2px;">Convidar ${name} para o Fala Brasil</strong>
+                    <small style="color: var(--text-muted);">Envie um convite via WhatsApp para ele baixar e responder na hora!</small>
+                </div>
+                <button onclick="inviteContact('${name}', '${tel}')" style="background: var(--social-green); color: black; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;">
+                    Enviar Convite 📲
+                </button>
+            `;
+            box.prepend(inviteCard);
+        }
+
+        function inviteContact(name, tel) {
+            const cleanTel = (tel || '').replace(/\D/g, '');
+            const text = encodeURIComponent(`Olá ${name}! Te mandei uma mensagem segura pelo Fala Brasil. Baixe o app soberano gratuito aqui para me responder: https://auracloud.com.br/falabrasil/`);
+            const whatsappUrl = cleanTel ? `https://api.whatsapp.com/send?phone=${cleanTel}&text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+            window.open(whatsappUrl, '_blank');
         }
 
         function openScannerNative() {
