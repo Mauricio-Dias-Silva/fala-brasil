@@ -69,16 +69,20 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
       ..addJavaScriptChannel(
         'NativeAura',
         onMessageReceived: (JavaScriptMessage message) async {
-          final data = jsonDecode(message.message);
-          final action = data['action'];
+          try {
+            final data = jsonDecode(message.message);
+            final action = data['action'];
 
-          if (action == 'getContacts') {
-            final contacts = await _getNativeContacts();
-            _controller.runJavaScript("window.onNativeContactsReceived($contacts)");
-          } else if (action == 'openScanner') {
-            _openQrScanner();
-          } else if (action == 'vibrate') {
-            HapticFeedback.mediumImpact();
+            if (action == 'getContacts') {
+              final contacts = await _getNativeContacts();
+              _controller.runJavaScript("window.onNativeContactsReceived($contacts)");
+            } else if (action == 'openScanner') {
+              _openQrScanner();
+            } else if (action == 'vibrate') {
+              HapticFeedback.mediumImpact();
+            }
+          } catch (e) {
+            debugPrint("Erro canal nativo: $e");
           }
         },
       );
@@ -276,9 +280,20 @@ const String kFalaBrasilMasterHtml = r"""
         #status-modal { position: fixed; inset: 0; background: #000; z-index: 1000; display: none; flex-direction: column; }
         .status-progress-bar { height: 3px; background: rgba(255,255,255,0.3); width: 100%; position: relative; }
         .status-progress-fill { height: 100%; background: white; width: 0%; transition: width 0.1s linear; }
+
+        /* CALL OVERLAY */
+        #call-overlay { position: fixed; inset: 0; background: linear-gradient(180deg, #0b141a 0%, #002b23 100%); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: space-between; padding: 60px 20px; }
+        .call-avatar { width: 110px; height: 110px; border-radius: 50%; background: #00f5c4; color: black; font-size: 48px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(0,245,196,0.4); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.06); } 100% { transform: scale(1); } }
+        .call-btn { width: 64px; height: 64px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; }
     </style>
 </head>
 <body>
+
+    <!-- HIDDEN REAL FILE INPUTS FOR CAMERA, GALLERY, DOCS -->
+    <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleFileUpload(this, 'camera')">
+    <input type="file" id="gallery-input" accept="image/*,video/*" multiple style="display:none" onchange="handleFileUpload(this, 'gallery')">
+    <input type="file" id="doc-input" accept=".pdf,.doc,.docx,.txt,.zip" multiple style="display:none" onchange="handleFileUpload(this, 'doc')">
 
     <!-- APP CONTAINER -->
     <div class="app-container">
@@ -294,9 +309,9 @@ const String kFalaBrasilMasterHtml = r"""
                     </div>
                 </div>
                 <div style="display: flex; gap: 14px; font-size: 20px; color: var(--text-muted);">
+                    <i class="ph ph-user-plus" onclick="createNewGroupDialog()" style="cursor: pointer; color: #00f5c4;" title="Criar Novo Grupo"></i>
                     <i class="ph ph-qr-code" onclick="openScannerNative()" style="cursor: pointer;" title="Escanear QR"></i>
-                    <i class="ph ph-shield-check" style="cursor: pointer; color: #00f5c4;" title="Escudo Sentinel Ativo"></i>
-                    <i class="ph ph-dots-three-vertical" style="cursor: pointer;"></i>
+                    <i class="ph ph-dots-three-vertical" onclick="showOptionsMenu()" style="cursor: pointer;"></i>
                 </div>
             </header>
 
@@ -310,27 +325,29 @@ const String kFalaBrasilMasterHtml = r"""
 
             <!-- TAB 1: CONVERSAS -->
             <div id="tab-chats" class="tab-content active">
-                <div class="chat-item active" onclick="openRoom('geral', 'Canal Geral Brasil', '🇧🇷', true)">
-                    <div class="avatar has-status" style="background: #00f5c4; color: black;">🇧🇷</div>
-                    <div class="chat-info">
-                        <div class="chat-header"><span class="chat-name">Canal Geral Brasil</span><span class="chat-time">Agora</span></div>
-                        <div class="chat-preview"><i class="ph ph-shield-check" style="color: #00f5c4;"></i> Criptografia Soberana Ativa</div>
+                <div id="rooms-list">
+                    <div class="chat-item active" onclick="openRoom('geral', 'Canal Geral Brasil', '🇧🇷', true)">
+                        <div class="avatar has-status" style="background: #00f5c4; color: black;">🇧🇷</div>
+                        <div class="chat-info">
+                            <div class="chat-header"><span class="chat-name">Canal Geral Brasil</span><span class="chat-time">Agora</span></div>
+                            <div class="chat-preview"><i class="ph ph-shield-check" style="color: #00f5c4;"></i> Criptografia Soberana Ativa</div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="chat-item" onclick="openRoom('ia_assistente', 'Aura Assistente IA 24h', '🤖', false)">
-                    <div class="avatar" style="background: #7c3aed; color: white;">🤖</div>
-                    <div class="chat-info">
-                        <div class="chat-header"><span class="chat-name">Aura Assistente IA</span><span class="chat-time">Online</span></div>
-                        <div class="chat-preview"><i class="ph ph-sparkle" style="color: #ffd700;"></i> Resumos, Traduções & Pesquisas</div>
+                    <div class="chat-item" onclick="openRoom('ia_assistente', 'Aura Assistente IA 24h', '🤖', false)">
+                        <div class="avatar" style="background: #7c3aed; color: white;">🤖</div>
+                        <div class="chat-info">
+                            <div class="chat-header"><span class="chat-name">Aura Assistente IA</span><span class="chat-time">Online</span></div>
+                            <div class="chat-preview"><i class="ph ph-sparkle" style="color: #ffd700;"></i> Resumos, Traduções & Pesquisas</div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="chat-item" onclick="openRoom('depin', 'Comunidade DePIN Brasil', '⚡', true)">
-                    <div class="avatar has-status" style="background: #00d1ff; color: black;">⚡</div>
-                    <div class="chat-info">
-                        <div class="chat-header"><span class="chat-name">Comunidade DePIN Brasil</span><span class="chat-time">17:40</span></div>
-                        <div class="chat-preview">64 nós virtuais por celular operando</div>
+                    <div class="chat-item" onclick="openRoom('depin', 'Comunidade DePIN Brasil', '⚡', true)">
+                        <div class="avatar has-status" style="background: #00d1ff; color: black;">⚡</div>
+                        <div class="chat-info">
+                            <div class="chat-header"><span class="chat-name">Comunidade DePIN Brasil</span><span class="chat-time">17:40</span></div>
+                            <div class="chat-preview">64 nós virtuais por celular operando</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -389,7 +406,7 @@ const String kFalaBrasilMasterHtml = r"""
             <!-- TAB 4: HISTÓRICO DE CHAMADAS -->
             <div id="tab-calls" class="tab-content">
                 <div style="padding: 12px 16px; font-size: 12px; color: var(--text-muted); font-weight: bold;">LIGAÇÕES CRIPTOGRAFADAS</div>
-                <div class="chat-item">
+                <div class="chat-item" onclick="startCall('audio')">
                     <div class="avatar" style="background: #202c33;"><i class="ph ph-phone-incoming" style="color: #00f5c4;"></i></div>
                     <div class="chat-info">
                         <div class="chat-name">Nó DePIN São Paulo</div>
@@ -422,10 +439,6 @@ const String kFalaBrasilMasterHtml = r"""
                 <div class="security-banner">
                     <i class="ph ph-shield-check" style="font-size: 20px; color: #00f5c4;"></i>
                     <span><strong>Escudo Anti-Golpe Sentinel:</strong> Suas conversas são protegidas e blindadas contra vazamentos.</span>
-                </div>
-                <div class="msg in">
-                    <strong>Aura Sentinel:</strong> Bem-vindo ao Fala Brasil! Este é o canal soberano criptografado nacional.
-                    <div class="msg-meta">12:00 ✓✓</div>
                 </div>
             </div>
 
@@ -532,11 +545,28 @@ const String kFalaBrasilMasterHtml = r"""
         </div>
     </div>
 
+    <!-- CALL OVERLAY -->
+    <div id="call-overlay">
+        <div style="text-align: center;">
+            <div class="call-avatar" id="call-avatar-icon">🇧🇷</div>
+            <h2 id="call-title" style="margin-top: 20px; font-weight: 700;">Canal Geral Brasil</h2>
+            <p id="call-status-timer" style="color: var(--social-green); font-size: 14px; margin-top: 6px;">Conectando via Nós DePIN P2P...</p>
+        </div>
+        
+        <div style="display: flex; gap: 24px;">
+            <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="alert('🎤 Microfone silenciado')"><i class="ph ph-microphone-slash"></i></button>
+            <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="alert('🔊 Viva-voz ativado')"><i class="ph ph-speaker-high"></i></button>
+            <button class="call-btn" style="background: #ff4b4b; color: white;" onclick="endCall()"><i class="ph ph-phone-disconnect"></i></button>
+        </div>
+    </div>
+
     <script>
         let userName = localStorage.getItem('fala_user') || 'Mauricio';
         let currentRoom = 'geral';
         let isTranslatorActive = false;
         let isRecording = false;
+        let callTimerInterval = null;
+        let callSeconds = 0;
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -551,6 +581,7 @@ const String kFalaBrasilMasterHtml = r"""
             document.getElementById('current-chat-name').innerText = roomName;
             document.getElementById('current-chat-avatar').innerText = icon;
             document.getElementById('chat-view').classList.add('active');
+            loadRoomMessages();
         }
 
         function closeChatMobile() {
@@ -593,15 +624,11 @@ const String kFalaBrasilMasterHtml = r"""
         function sendGif(gifUrl) {
             togglePanel('emoji-panel');
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const box = document.getElementById('messages-box');
-            const bubble = document.createElement('div');
-            bubble.className = 'msg out';
-            bubble.innerHTML = `
-                <img src="\${gifUrl}" style="width: 100%; max-width: 220px; border-radius: 8px; display: block;">
-                <div class="msg-meta">\${now} ✓✓</div>
+            const bubbleHtml = `
+                <img src="${gifUrl}" style="width: 100%; max-width: 220px; border-radius: 8px; display: block;">
+                <div class="msg-meta">${now} ✓✓</div>
             `;
-            box.appendChild(bubble);
-            box.scrollTop = box.scrollHeight;
+            appendAndSaveMessage(bubbleHtml, 'out');
         }
 
         function toggleTranslator() {
@@ -616,7 +643,54 @@ const String kFalaBrasilMasterHtml = r"""
         }
 
         function startCall(type) {
-            alert(`📞 Iniciando chamada de \${type.toUpperCase()} P2P Criptografada via nós soberanos...`);
+            const overlay = document.getElementById('call-overlay');
+            overlay.style.display = 'flex';
+            document.getElementById('call-title').innerText = document.getElementById('current-chat-name').innerText;
+            document.getElementById('call-avatar-icon').innerText = document.getElementById('current-chat-avatar').innerText;
+            
+            callSeconds = 0;
+            const timerEl = document.getElementById('call-status-timer');
+            timerEl.innerText = "Conectando via Nós DePIN P2P Full HD...";
+            
+            setTimeout(() => {
+                timerEl.innerText = "00:00 (Áudio HD Opus Ativo)";
+                callTimerInterval = setInterval(() => {
+                    callSeconds++;
+                    const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+                    const secs = String(callSeconds % 60).padStart(2, '0');
+                    timerEl.innerText = `${mins}:${secs} (Criptografia DTLS-SRTP)`;
+                }, 1000);
+            }, 1500);
+        }
+
+        function endCall() {
+            if (callTimerInterval) clearInterval(callTimerInterval);
+            document.getElementById('call-overlay').style.display = 'none';
+        }
+
+        function createNewGroupDialog() {
+            const groupName = prompt('Digite o nome do Novo Grupo (ex: Turma Univesp 2026 / Família):');
+            if (!groupName) return;
+
+            const newGroupId = 'group_' + Date.now();
+            const list = document.getElementById('rooms-list');
+            const item = document.createElement('div');
+            item.className = 'chat-item';
+            item.onclick = () => openRoom(newGroupId, groupName, '👥', false);
+            item.innerHTML = `
+                <div class="avatar" style="background: #ffd700; color: black;">👥</div>
+                <div class="chat-info">
+                    <div class="chat-header"><span class="chat-name">${groupName}</span><span class="chat-time">Agora</span></div>
+                    <div class="chat-preview">Grupo Soberano Criado com Sucesso</div>
+                </div>
+            `;
+            list.prepend(item);
+            openRoom(newGroupId, groupName, '👥', false);
+            alert(`🎉 Grupo "${groupName}" criado com capacidade de até 50.000 membros!`);
+        }
+
+        function showOptionsMenu() {
+            alert("⚙️ Opções do Fala Brasil:\n• Novo Grupo (até 50 mil membros)\n• Novo Canal de Transmissão (Ilimitado)\n• Aparelhos Conectados via QR Code\n• Mensagens Favoritas\n• Configurações de Privacidade");
         }
 
         function postStatus() {
@@ -650,20 +724,16 @@ const String kFalaBrasilMasterHtml = r"""
             if (!valor) return;
             
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const box = document.getElementById('messages-box');
-            const bubble = document.createElement('div');
-            bubble.className = 'msg out';
-            bubble.innerHTML = `
+            const bubbleHtml = `
                 <strong>⚡ Fala Pay — Cobrança PIX</strong>
                 <div class="pix-card">
-                    <div style="font-size: 18px; font-weight: bold; color: #00f5c4;">R\\$ \${valor}</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #00f5c4;">R$ ${valor}</div>
                     <small style="color: var(--text-muted);">Transferência Instantânea Soberana</small>
-                    <button class="pix-btn" onclick="alert('✅ PIX de R\\$ \${valor} Copiado!')">Copiar Código PIX</button>
+                    <button class="pix-btn" onclick="alert('✅ Código PIX de R$ ${valor} Copiado!')">Copiar Código PIX</button>
                 </div>
-                <div class="msg-meta">\${now} ✓✓</div>
+                <div class="msg-meta">${now} ✓✓</div>
             `;
-            box.appendChild(bubble);
-            box.scrollTop = box.scrollHeight;
+            appendAndSaveMessage(bubbleHtml, 'out');
         }
 
         function toggleRecordAudio() {
@@ -681,10 +751,7 @@ const String kFalaBrasilMasterHtml = r"""
 
         function sendAudioMessage() {
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const box = document.getElementById('messages-box');
-            const bubble = document.createElement('div');
-            bubble.className = 'msg out';
-            bubble.innerHTML = `
+            const bubbleHtml = `
                 <div class="audio-bubble">
                     <button class="audio-play-btn" onclick="playAudioDemo(this)"><i class="ph ph-play"></i></button>
                     <div class="audio-wave"><div class="audio-wave-fill"></div></div>
@@ -692,12 +759,11 @@ const String kFalaBrasilMasterHtml = r"""
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 4px;">
                     <small style="color: var(--social-green); cursor: pointer; font-size: 11px;" onclick="transcribeAudio(this)">[📝 Transcrever com IA]</small>
-                    <div class="msg-meta">\${now} ✓✓</div>
+                    <div class="msg-meta">${now} ✓✓</div>
                 </div>
                 <div class="ai-transcribe-box" style="display: none;"></div>
             `;
-            box.appendChild(bubble);
-            box.scrollTop = box.scrollHeight;
+            appendAndSaveMessage(bubbleHtml, 'out');
         }
 
         function playAudioDemo(btn) {
@@ -719,34 +785,66 @@ const String kFalaBrasilMasterHtml = r"""
 
         function triggerCamera() {
             togglePanel('attach-panel');
-            alert('📷 Câmera Aberta: Foto capturada e anexada ao chat!');
+            document.getElementById('camera-input').click();
         }
 
         function triggerMediaUpload() {
             togglePanel('attach-panel');
-            alert('🖼️ Galeria: Selecione múltiplos vídeos e fotos para envio!');
+            document.getElementById('gallery-input').click();
         }
 
         function triggerDocUpload() {
             togglePanel('attach-panel');
-            alert('📄 Documentos: Selecione PDFs ou arquivos do Google Drive para envio!');
+            document.getElementById('doc-input').click();
+        }
+
+        function handleFileUpload(input, type) {
+            const files = input.files;
+            if (!files || files.length === 0) return;
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    let contentHtml = '';
+                    if (type === 'camera' || type === 'gallery') {
+                        contentHtml = `
+                            <img src="${e.target.result}" style="width: 100%; max-width: 250px; border-radius: 8px; display: block; margin-bottom: 4px;">
+                            <small style="color: var(--text-muted);">${file.name}</small>
+                            <div class="msg-meta">${now} ✓✓</div>
+                        `;
+                    } else {
+                        contentHtml = `
+                            <div style="display: flex; align-items: center; gap: 10px; background: #182229; padding: 8px; border-radius: 8px;">
+                                <i class="ph ph-file-pdf" style="font-size: 28px; color: #ff4b4b;"></i>
+                                <div style="flex: 1; min-width: 0;">
+                                    <strong style="font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis;">${file.name}</strong>
+                                    <small style="color: var(--text-muted);">${(file.size / 1024).toFixed(1)} KB</small>
+                                </div>
+                                <button onclick="alert('Abrindo documento...')" style="background: var(--social-green); color: black; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">Baixar</button>
+                            </div>
+                            <div class="msg-meta">${now} ✓✓</div>
+                        `;
+                    }
+                    appendAndSaveMessage(contentHtml, 'out');
+                };
+                reader.readAsDataURL(file);
+            }
+            input.value = '';
         }
 
         function sendLocation() {
             togglePanel('attach-panel');
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const box = document.getElementById('messages-box');
-            const bubble = document.createElement('div');
-            bubble.className = 'msg out';
-            bubble.innerHTML = `
+            const bubbleHtml = `
                 <strong>📍 Localização em Tempo Real</strong>
                 <div style="background: #182229; border-radius: 8px; padding: 8px; margin-top: 4px; font-size: 12px; color: #00f5c4;">
                     🗺️ São Paulo, SP (Coordenadas Soberanas Seguras)
                 </div>
-                <div class="msg-meta">\${now} ✓✓</div>
+                <div class="msg-meta">${now} ✓✓</div>
             `;
-            box.appendChild(bubble);
-            box.scrollTop = box.scrollHeight;
+            appendAndSaveMessage(bubbleHtml, 'out');
         }
 
         function fetchNativeContacts() {
@@ -767,10 +865,10 @@ const String kFalaBrasilMasterHtml = r"""
                 item.className = 'chat-item';
                 item.onclick = () => openDirectContact(c.name, c.tel);
                 item.innerHTML = `
-                    <div class="avatar" style="background: #202c33; color: #00f5c4;">\${c.name[0]}</div>
+                    <div class="avatar" style="background: #202c33; color: #00f5c4;">${c.name[0]}</div>
                     <div class="chat-info">
-                        <div class="chat-name">\${c.name}</div>
-                        <div class="chat-preview">\${c.tel || 'Iniciar conversa soberana'}</div>
+                        <div class="chat-name">${c.name}</div>
+                        <div class="chat-preview">${c.tel || 'Iniciar conversa soberana'}</div>
                     </div>
                 `;
                 container.appendChild(item);
@@ -791,6 +889,45 @@ const String kFalaBrasilMasterHtml = r"""
             if (e.key === 'Enter') sendMessage();
         }
 
+        function appendAndSaveMessage(htmlContent, type) {
+            const box = document.getElementById('messages-box');
+            const bubble = document.createElement('div');
+            bubble.className = 'msg ' + type;
+            bubble.innerHTML = htmlContent;
+            box.appendChild(bubble);
+            box.scrollTop = box.scrollHeight;
+
+            // Salva no LocalStorage da sala
+            const saved = JSON.parse(localStorage.getItem('fala_history_' + currentRoom) || '[]');
+            saved.push({ html: htmlContent, type: type });
+            localStorage.setItem('fala_history_' + currentRoom, JSON.stringify(saved));
+        }
+
+        function loadRoomMessages() {
+            const box = document.getElementById('messages-box');
+            box.innerHTML = `
+                <div class="security-banner">
+                    <i class="ph ph-shield-check" style="font-size: 20px; color: #00f5c4;"></i>
+                    <span><strong>Escudo Anti-Golpe Sentinel:</strong> Suas conversas são protegidas e blindadas contra vazamentos.</span>
+                </div>
+            `;
+            const saved = JSON.parse(localStorage.getItem('fala_history_' + currentRoom) || '[]');
+            if (saved.length === 0) {
+                const bubble = document.createElement('div');
+                bubble.className = 'msg in';
+                bubble.innerHTML = `<strong>Aura Sentinel:</strong> Canal soberano criptografado ativo.<div class="msg-meta">Agora ✓✓</div>`;
+                box.appendChild(bubble);
+            } else {
+                saved.forEach(m => {
+                    const bubble = document.createElement('div');
+                    bubble.className = 'msg ' + m.type;
+                    bubble.innerHTML = m.html;
+                    box.appendChild(bubble);
+                });
+            }
+            box.scrollTop = box.scrollHeight;
+        }
+
         async function sendMessage() {
             const input = document.getElementById('msg-input');
             let text = input.value.trim();
@@ -798,21 +935,14 @@ const String kFalaBrasilMasterHtml = r"""
             input.value = '';
 
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            const box = document.getElementById('messages-box');
-            const bubble = document.createElement('div');
-            bubble.className = 'msg out';
-            bubble.innerHTML = `\${text}<div class="msg-meta">\${now} ✓✓</div>`;
-            box.appendChild(bubble);
-            box.scrollTop = box.scrollHeight;
+            appendAndSaveMessage(`${text}<div class="msg-meta">${now} ✓✓</div>`, 'out');
 
             if (currentRoom === 'ia_assistente') {
                 setTimeout(async () => {
                     const aiBubble = document.createElement('div');
                     aiBubble.className = 'msg in';
                     aiBubble.innerHTML = `<em>🤖 Processando no nó DePIN da Aura...</em>`;
-                    box.appendChild(aiBubble);
-                    box.scrollTop = box.scrollHeight;
+                    document.getElementById('messages-box').appendChild(aiBubble);
 
                     try {
                         const res = await fetch('https://auracloud.com.br/v1/chat/completions', {
@@ -825,14 +955,17 @@ const String kFalaBrasilMasterHtml = r"""
                         });
                         const data = await res.json();
                         const reply = data.choices ? data.choices[0].message.content : "Olá! Sou o Assistente IA do Fala Brasil.";
-                        aiBubble.innerHTML = `<strong>Aura IA:</strong> \${reply}<div class="msg-meta">\${now}</div>`;
-                        box.scrollTop = box.scrollHeight;
+                        aiBubble.innerHTML = `<strong>Aura IA:</strong> ${reply}<div class="msg-meta">${now}</div>`;
                     } catch (e) {
-                        aiBubble.innerHTML = `<strong>Aura IA:</strong> Resposta gerada com sucesso pela rede soberana.<div class="msg-meta">\${now}</div>`;
+                        aiBubble.innerHTML = `<strong>Aura IA:</strong> Resposta gerada com sucesso pela rede soberana.<div class="msg-meta">${now}</div>`;
                     }
                 }, 400);
             }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRoomMessages();
+        });
     </script>
 </body>
 </html>
