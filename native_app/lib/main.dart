@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 
 void main() {
@@ -78,6 +80,10 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
               _controller.runJavaScript("window.onNativeContactsReceived($contacts)");
             } else if (action == 'openScanner') {
               _openQrScanner();
+            } else if (action == 'shareInvite') {
+              final String text = data['text'] ?? '';
+              final String tel = data['tel'] ?? '';
+              _handleShareInvite(text, tel);
             } else if (action == 'vibrate') {
               HapticFeedback.mediumImpact();
             }
@@ -88,6 +94,23 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
       );
 
     _loadApp();
+  }
+
+  Future<void> _handleShareInvite(String text, String tel) async {
+    try {
+      final cleanTel = tel.replaceAll(RegExp(r'\D'), '');
+      if (cleanTel.length >= 10 && !cleanTel.contains('999999999')) {
+        final formattedTel = cleanTel.startsWith('55') ? cleanTel : '55$cleanTel';
+        final Uri whatsappUri = Uri.parse("https://wa.me/$formattedTel?text=${Uri.encodeComponent(text)}");
+        if (await canLaunchUrl(whatsappUri)) {
+          await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+      await Share.share(text);
+    } catch (e) {
+      await Share.share(text);
+    }
   }
 
   void _loadApp() {
@@ -186,7 +209,7 @@ const String kFalaBrasilMasterHtml = r"""
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Fala Brasil | SuperApp Soberano</title>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
@@ -203,76 +226,75 @@ const String kFalaBrasilMasterHtml = r"""
             --danger: #ff4b4b;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: #000; height: 100vh; width: 100vw; display: flex; overflow: hidden; color: var(--text-main); }
-        .app-container { width: 100%; height: 100%; display: flex; background: var(--bg-deep); position: relative; }
+        html, body { background: #000; height: 100%; width: 100vw; max-width: 100vw; display: flex; overflow: hidden; color: var(--text-main); }
+        .app-container { width: 100%; height: 100%; display: flex; background: var(--bg-deep); position: relative; overflow: hidden; }
         
         /* SIDEBAR / MAIN TABS */
-        #sidebar { width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-deep); z-index: 10; border-right: 1px solid rgba(255,255,255,0.06); }
+        #sidebar { width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-deep); z-index: 10; border-right: 1px solid rgba(255,255,255,0.06); overflow: hidden; }
         @media (min-width: 900px) { #sidebar { width: 34%; min-width: 380px; } }
         
-        header { height: 62px; background: var(--header-bg); padding: 0 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: relative; }
+        header { height: 58px; background: var(--header-bg); padding: 0 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: relative; }
         .nav-tabs { display: flex; background: var(--header-bg); border-bottom: 2px solid rgba(255,255,255,0.06); flex-shrink: 0; }
-        .tab-btn { flex: 1; padding: 12px 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 3px solid transparent; transition: all 0.2s; }
+        .tab-btn { flex: 1; padding: 10px 0; text-align: center; font-size: 12px; font-weight: 700; color: var(--text-muted); cursor: pointer; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
         .tab-btn.active { color: var(--social-green); border-bottom: 3px solid var(--social-green); }
         
         .tab-content { flex: 1; overflow-y: auto; display: none; }
         .tab-content.active { display: block; }
         
         /* CHAT ITEMS */
-        .chat-item { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; }
+        .chat-item { display: flex; align-items: center; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; }
         .chat-item:active, .chat-item.active { background: #182229; }
-        .avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 14px; flex-shrink: 0; font-size: 22px; position: relative; }
-        .avatar.has-status { border: 2.5px solid var(--social-green); padding: 2px; }
+        .avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; font-size: 20px; position: relative; }
+        .avatar.has-status { border: 2px solid var(--social-green); padding: 2px; }
         .chat-info { flex: 1; min-width: 0; }
-        .chat-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
-        .chat-name { font-weight: 600; font-size: 15px; color: var(--text-main); }
-        .chat-time { font-size: 11px; color: var(--text-muted); }
-        .chat-preview { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+        .chat-header { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .chat-name { font-weight: 600; font-size: 14px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-time { font-size: 11px; color: var(--text-muted); flex-shrink: 0; margin-left: 6px; }
+        .chat-preview { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
         
         /* CHAT VIEW */
-        #chat-view { position: absolute; top: 0; right: 0; width: 100%; height: 100%; display: flex; flex-direction: column; background: #0b141a; z-index: 20; transform: translateX(100%); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        #chat-view { position: absolute; top: 0; right: 0; width: 100%; height: 100%; display: flex; flex-direction: column; background: #0b141a; z-index: 20; transform: translateX(100%); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; }
         #chat-view.active { transform: translateX(0); }
         @media (min-width: 900px) { #chat-view { position: relative; flex: 1; transform: translateX(0); z-index: 5; } }
         
-        .messages-box { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png') repeat; background-color: #0b141a; }
-        .msg { max-width: 82%; padding: 8px 12px; border-radius: 10px; font-size: 14px; position: relative; line-height: 1.45; word-wrap: break-word; }
+        .messages-box { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png') repeat; background-color: #0b141a; }
+        .msg { max-width: 85%; padding: 8px 10px; border-radius: 10px; font-size: 13.5px; position: relative; line-height: 1.4; word-wrap: break-word; }
         .msg.in { align-self: flex-start; background: var(--bubble-in); color: var(--text-main); }
         .msg.out { align-self: flex-end; background: var(--bubble-out); color: #fff; }
         .msg-meta { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 4px; }
         
         /* AUDIO PLAYER IN BUBBLE */
-        .audio-bubble { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-        .audio-play-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--social-green); color: black; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
+        .audio-bubble { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+        .audio-play-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--social-green); color: black; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; }
         .audio-wave { flex: 1; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; position: relative; }
         .audio-wave-fill { width: 45%; height: 100%; background: var(--social-green); border-radius: 2px; }
         .audio-speed-btn { background: rgba(255,255,255,0.15); border: none; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: bold; cursor: pointer; }
-        .ai-transcribe-box { margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.15); font-size: 12px; color: #d1d7db; }
+        .ai-transcribe-box { margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.15); font-size: 11.5px; color: #d1d7db; }
         
         /* PIX BUBBLE */
-        .pix-card { background: #182229; border: 1px solid var(--social-green); border-radius: 10px; padding: 12px; margin-top: 4px; }
-        .pix-btn { width: 100%; margin-top: 8px; padding: 8px; background: var(--social-green); color: black; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .pix-card { background: #182229; border: 1px solid var(--social-green); border-radius: 8px; padding: 10px; margin-top: 4px; }
+        .pix-btn { width: 100%; margin-top: 6px; padding: 6px; background: var(--social-green); color: black; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11.5px; }
         
         /* SECURITY BANNER (ANTI-GOLPE) */
-        .security-banner { background: rgba(255, 75, 75, 0.15); border: 1px solid var(--danger); border-radius: 8px; padding: 8px 12px; color: #ff8e8e; font-size: 11px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .security-banner { background: rgba(255, 75, 75, 0.15); border: 1px solid var(--danger); border-radius: 8px; padding: 8px 10px; color: #ff8e8e; font-size: 11px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
         
         /* INPUT BAR */
-        .input-bar { height: 62px; background: var(--header-bg); padding: 8px 12px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; position: relative; }
-        .input-bar input { flex: 1; background: #2a3942; border: none; outline: none; border-radius: 20px; padding: 10px 14px; color: white; font-size: 15px; }
-        .action-btn { width: 40px; height: 40px; border-radius: 50%; background: transparent; border: none; color: var(--text-muted); font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .action-btn.active { color: var(--social-green); }
-        .send-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--social-green); border: none; color: black; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .input-bar { min-height: 56px; background: var(--header-bg); padding: 6px 8px; display: flex; align-items: center; gap: 4px; flex-shrink: 0; position: relative; }
+        .input-bar input { flex: 1; min-width: 0; background: #2a3942; border: none; outline: none; border-radius: 20px; padding: 8px 12px; color: white; font-size: 14px; }
+        .action-btn { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none; color: var(--text-muted); font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .send-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--social-green); border: none; color: black; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
         
         /* POPUP MENUS (EMOJI, ATTACHMENTS, PIX) */
-        .popup-panel { position: absolute; bottom: 65px; left: 10px; right: 10px; background: #1f2c34; border-radius: 12px; padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none; z-index: 100; border: 1px solid rgba(255,255,255,0.08); }
+        .popup-panel { position: absolute; bottom: 60px; left: 8px; right: 8px; background: #1f2c34; border-radius: 12px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none; z-index: 100; border: 1px solid rgba(255,255,255,0.08); }
         .popup-panel.show { display: block; animation: slideUp 0.2s ease; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        .attach-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; }
-        .attach-item { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; padding: 8px; border-radius: 8px; }
+        .attach-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+        .attach-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px; border-radius: 8px; }
         .attach-item:hover { background: rgba(255,255,255,0.05); }
-        .attach-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; }
+        .attach-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; color: white; }
         
-        .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; font-size: 24px; max-height: 180px; overflow-y: auto; text-align: center; }
+        .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; font-size: 22px; max-height: 170px; overflow-y: auto; text-align: center; }
         .emoji-item { cursor: pointer; padding: 4px; border-radius: 4px; }
         .emoji-item:hover { background: rgba(255,255,255,0.1); }
         
@@ -282,27 +304,27 @@ const String kFalaBrasilMasterHtml = r"""
         .status-progress-fill { height: 100%; background: white; width: 0%; transition: width 0.1s linear; }
 
         /* CALL OVERLAY */
-        #call-overlay { position: fixed; inset: 0; background: linear-gradient(180deg, #0b141a 0%, #002b23 100%); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: space-between; padding: 60px 20px; }
-        .call-avatar { width: 110px; height: 110px; border-radius: 50%; background: #00f5c4; color: black; font-size: 48px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(0,245,196,0.4); animation: pulse 2s infinite; }
+        #call-overlay { position: fixed; inset: 0; background: linear-gradient(180deg, #0b141a 0%, #002b23 100%); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: space-between; padding: 50px 20px; }
+        .call-avatar { width: 90px; height: 90px; border-radius: 50%; background: #00f5c4; color: black; font-size: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(0,245,196,0.4); animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.06); } 100% { transform: scale(1); } }
-        .call-btn { width: 64px; height: 64px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; }
+        .call-btn { width: 56px; height: 56px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; }
 
         /* NATIVE CUSTOM MODAL (NO BROWSER PROMPT/ALERT) */
-        .native-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
-        .native-modal-card { width: 100%; max-width: 340px; background: #1f2c34; border-radius: 14px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 16px 36px rgba(0,0,0,0.8); animation: slideUp 0.2s ease; }
-        .native-modal-title { font-size: 16px; font-weight: 700; color: white; margin-bottom: 12px; }
-        .native-modal-input { width: 100%; padding: 12px; border-radius: 8px; background: #2a3942; border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 14px; outline: none; margin-bottom: 16px; }
-        .native-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
-        .btn-modal-cancel { background: transparent; border: none; color: var(--text-muted); font-weight: bold; padding: 8px 14px; cursor: pointer; font-size: 13px; }
-        .btn-modal-confirm { background: var(--social-green); color: black; border: none; border-radius: 6px; font-weight: bold; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+        .native-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
+        .native-modal-card { width: 100%; max-width: 320px; background: #1f2c34; border-radius: 12px; padding: 18px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 16px 36px rgba(0,0,0,0.8); animation: slideUp 0.2s ease; }
+        .native-modal-title { font-size: 15px; font-weight: 700; color: white; margin-bottom: 10px; }
+        .native-modal-input { width: 100%; padding: 10px; border-radius: 8px; background: #2a3942; border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 13.5px; outline: none; margin-bottom: 14px; }
+        .native-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .btn-modal-cancel { background: transparent; border: none; color: var(--text-muted); font-weight: bold; padding: 6px 12px; cursor: pointer; font-size: 12px; }
+        .btn-modal-confirm { background: var(--social-green); color: black; border: none; border-radius: 6px; font-weight: bold; padding: 6px 14px; cursor: pointer; font-size: 12px; }
 
         /* THREE DOTS DROPDOWN MENU */
-        #options-dropdown { position: absolute; top: 55px; right: 12px; background: #1f2c34; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none; flex-direction: column; width: 220px; z-index: 2500; overflow: hidden; }
-        .dropdown-item { padding: 12px 16px; font-size: 13px; color: var(--text-main); display: flex; align-items: center; gap: 10px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        #options-dropdown { position: absolute; top: 50px; right: 10px; background: #1f2c34; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none; flex-direction: column; width: 210px; z-index: 2500; overflow: hidden; }
+        .dropdown-item { padding: 10px 14px; font-size: 12.5px; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); }
         .dropdown-item:active { background: #2a3942; }
 
         /* TOAST NOTIFICATION */
-        #toast-notice { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #00f5c4; color: black; font-weight: bold; font-size: 12px; padding: 10px 18px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 4000; display: none; animation: slideUp 0.2s ease; }
+        #toast-notice { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #00f5c4; color: black; font-weight: bold; font-size: 11.5px; padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 4000; display: none; animation: slideUp 0.2s ease; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -319,7 +341,7 @@ const String kFalaBrasilMasterHtml = r"""
     <div class="native-modal-backdrop" id="modal-group">
         <div class="native-modal-card">
             <div class="native-modal-title">👥 Criar Novo Grupo</div>
-            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Capacidade de até 50.000 membros com criptografia militar soberana.</p>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">Capacidade de até 50.000 membros com criptografia soberana.</p>
             <input type="text" id="input-group-name" class="native-modal-input" placeholder="Nome do Grupo (ex: Família / Univesp)">
             <div class="native-modal-actions">
                 <button class="btn-modal-cancel" onclick="closeModal('modal-group')">Cancelar</button>
@@ -332,7 +354,7 @@ const String kFalaBrasilMasterHtml = r"""
     <div class="native-modal-backdrop" id="modal-pix">
         <div class="native-modal-card">
             <div class="native-modal-title">⚡ Fala Pay — Transferir PIX</div>
-            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Digite o valor para gerar o card de pagamento instantâneo no chat:</p>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">Digite o valor para gerar o card de pagamento no chat:</p>
             <input type="number" id="input-pix-val" class="native-modal-input" placeholder="Valor em R$ (ex: 50.00)" value="50.00">
             <div class="native-modal-actions">
                 <button class="btn-modal-cancel" onclick="closeModal('modal-pix')">Cancelar</button>
@@ -359,14 +381,14 @@ const String kFalaBrasilMasterHtml = r"""
         <!-- SIDEBAR -->
         <aside id="sidebar">
             <header>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="avatar" style="background: #00f5c4; color: black; font-weight: bold; width: 38px; height: 38px;" id="my-avatar">U</div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="avatar" style="background: #00f5c4; color: black; font-weight: bold; width: 34px; height: 34px; font-size: 16px;" id="my-avatar">U</div>
                     <div>
-                        <strong id="my-user-label" style="font-size: 14px;">Fala Brasil</strong>
-                        <small style="display: block; color: #00f5c4; font-size: 10px;">● Soberano E2EE</small>
+                        <strong id="my-user-label" style="font-size: 13.5px;">Fala Brasil</strong>
+                        <small style="display: block; color: #00f5c4; font-size: 9.5px;">● Soberano E2EE</small>
                     </div>
                 </div>
-                <div style="display: flex; gap: 14px; font-size: 20px; color: var(--text-muted);">
+                <div style="display: flex; gap: 12px; font-size: 18px; color: var(--text-muted);">
                     <i class="ph ph-user-plus" onclick="openModalGroup()" style="cursor: pointer; color: #00f5c4;" title="Criar Novo Grupo"></i>
                     <i class="ph ph-qr-code" onclick="openScannerNative()" style="cursor: pointer;" title="Escanear QR"></i>
                     <i class="ph ph-dots-three-vertical" onclick="toggleOptionsMenu()" style="cursor: pointer;"></i>
@@ -376,6 +398,7 @@ const String kFalaBrasilMasterHtml = r"""
                 <div id="options-dropdown">
                     <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-users-three" style="color: #00f5c4;"></i> Novo Grupo</div>
                     <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-broadcast" style="color: #ffd700;"></i> Novo Canal (Ilimitado)</div>
+                    <div class="dropdown-item" onclick="openModalPix()"><i class="ph ph-currency-dollar" style="color: #00f5c4;"></i> Fala Pay PIX & Carteira</div>
                     <div class="dropdown-item" onclick="openScannerNative()"><i class="ph ph-qr-code"></i> Aparelhos Conectados</div>
                     <div class="dropdown-item" onclick="showToast('⭐ Mensagens favoritas sincronizadas')"><i class="ph ph-star"></i> Mensagens Favoritas</div>
                     <div class="dropdown-item" onclick="showToast('🔒 Criptografia P2P e Sentinel Ativos')"><i class="ph ph-shield-check" style="color: #00f5c4;"></i> Privacidade & Segurança</div>
@@ -421,9 +444,9 @@ const String kFalaBrasilMasterHtml = r"""
 
             <!-- TAB 2: STATUS / STORIES -->
             <div id="tab-status" class="tab-content">
-                <div style="padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 14px;">
+                <div style="padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 12px;">
                     <div class="avatar" style="background: #202c33; color: white; position: relative;">
-                        <i class="ph ph-plus" style="position: absolute; bottom: 0; right: 0; background: #00f5c4; color: black; border-radius: 50%; padding: 2px; font-size: 14px;"></i>
+                        <i class="ph ph-plus" style="position: absolute; bottom: 0; right: 0; background: #00f5c4; color: black; border-radius: 50%; padding: 2px; font-size: 12px;"></i>
                         📷
                     </div>
                     <div style="flex: 1;" onclick="openModalStatus()">
@@ -432,7 +455,7 @@ const String kFalaBrasilMasterHtml = r"""
                     </div>
                 </div>
                 
-                <div style="padding: 12px 16px; font-size: 12px; color: var(--social-green); font-weight: bold; text-transform: uppercase;">Atualizações Recentes</div>
+                <div style="padding: 10px 14px; font-size: 11px; color: var(--social-green); font-weight: bold; text-transform: uppercase;">Atualizações Recentes</div>
 
                 <div class="chat-item" onclick="viewStatus('Aura DePIN', 'Acabamos de atingir 64 nós por aparelho! 🚀🇧🇷', '#005c4b')">
                     <div class="avatar has-status" style="background: #00d1ff; color: black;">⚡</div>
@@ -453,26 +476,27 @@ const String kFalaBrasilMasterHtml = r"""
 
             <!-- TAB 3: CONTATOS REAIS DA AGENDA -->
             <div id="tab-contacts" class="tab-content">
-                <div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06);">
-                    <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">CONTATOS DO TELEFONE</span>
-                    <button onclick="fetchNativeContacts()" style="padding: 6px 12px; background: var(--social-green); color: black; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
+                <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                    <span style="font-size: 11px; color: var(--text-muted); font-weight: bold;">CONTATOS DO TELEFONE</span>
+                    <button onclick="fetchNativeContacts()" style="padding: 5px 10px; background: var(--social-green); color: black; border: none; border-radius: 6px; font-size: 10.5px; font-weight: bold; cursor: pointer;">
                         🔄 Sincronizar Agenda
                     </button>
                 </div>
                 <div id="contacts-list">
-                    <div class="chat-item" onclick="openDirectContact('Mauricio (Você)', '+55 (11) 99999-9999')">
-                        <div class="avatar" style="background: #00f5c4; color: black;">M</div>
-                        <div class="chat-info">
-                            <div class="chat-name">Mauricio (Você)</div>
-                            <div class="chat-preview">Mensagens salvas e notas pessoais</div>
-                        </div>
+                    <div style="padding: 24px 16px; text-align: center; color: var(--text-muted);">
+                        <i class="ph ph-address-book" style="font-size: 36px; color: #00f5c4; margin-bottom: 8px; display: block;"></i>
+                        <strong style="color: white; font-size: 13.5px; display: block; margin-bottom: 4px;">Sincronizar sua Agenda</strong>
+                        <p style="font-size: 11.5px; margin-bottom: 12px;">Carregue seus contatos reais para conversar e enviar convites com 1 toque.</p>
+                        <button onclick="fetchNativeContacts()" style="padding: 8px 16px; background: var(--social-green); color: black; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11.5px;">
+                            🔄 Carregar Contatos do Celular
+                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- TAB 4: HISTÓRICO DE CHAMADAS -->
             <div id="tab-calls" class="tab-content">
-                <div style="padding: 12px 16px; font-size: 12px; color: var(--text-muted); font-weight: bold;">LIGAÇÕES CRIPTOGRAFADAS</div>
+                <div style="padding: 10px 14px; font-size: 11px; color: var(--text-muted); font-weight: bold;">LIGAÇÕES CRIPTOGRAFADAS</div>
                 <div class="chat-item" onclick="startCall('audio')">
                     <div class="avatar" style="background: #202c33;"><i class="ph ph-phone-incoming" style="color: #00f5c4;"></i></div>
                     <div class="chat-info">
@@ -486,16 +510,16 @@ const String kFalaBrasilMasterHtml = r"""
         <!-- CHAT VIEW -->
         <main id="chat-view">
             <header>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <i class="ph ph-arrow-left" style="font-size: 22px; cursor: pointer;" onclick="closeChatMobile()"></i>
-                    <div class="avatar" id="current-chat-avatar" style="width: 38px; height: 38px; margin-right: 0; background: #00f5c4; color: black; font-size: 20px;">🇧🇷</div>
-                    <div>
-                        <strong id="current-chat-name" style="font-size: 15px;">Canal Geral Brasil</strong>
-                        <small id="current-chat-status" style="display: block; color: #00f5c4; font-size: 11px;">Criptografia Ponta a Ponta Ativa</small>
+                <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+                    <i class="ph ph-arrow-left" style="font-size: 20px; cursor: pointer; flex-shrink: 0;" onclick="closeChatMobile()"></i>
+                    <div class="avatar" id="current-chat-avatar" style="width: 34px; height: 34px; margin-right: 0; background: #00f5c4; color: black; font-size: 18px; flex-shrink: 0;">🇧🇷</div>
+                    <div style="min-width: 0; flex: 1;">
+                        <strong id="current-chat-name" style="font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">Canal Geral Brasil</strong>
+                        <small id="current-chat-status" style="display: block; color: #00f5c4; font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Criptografia Ponta a Ponta Ativa</small>
                     </div>
                 </div>
-                <div style="display: flex; gap: 14px; color: var(--text-muted); font-size: 20px; align-items: center;">
-                    <i class="ph ph-currency-dollar-simple" onclick="openModalPix()" style="cursor: pointer; color: #00f5c4; font-size: 22px;" title="Transferir PIX"></i>
+                <div style="display: flex; gap: 10px; color: var(--text-muted); font-size: 18px; align-items: center; flex-shrink: 0;">
+                    <i class="ph ph-currency-dollar-simple" onclick="openModalPix()" style="cursor: pointer; color: #00f5c4; font-size: 20px;" title="Transferir PIX"></i>
                     <i class="ph ph-translate" id="translator-toggle-btn" onclick="toggleTranslator()" style="cursor: pointer;" title="Tradutor Simultâneo"></i>
                     <i class="ph ph-phone" onclick="startCall('audio')" style="cursor: pointer;" title="Chamada de Voz"></i>
                     <i class="ph ph-video-camera" onclick="startCall('video')" style="cursor: pointer;" title="Vídeo Chamada"></i>
@@ -505,19 +529,19 @@ const String kFalaBrasilMasterHtml = r"""
             <!-- MESSAGES CONTAINER -->
             <div class="messages-box" id="messages-box">
                 <div class="security-banner">
-                    <i class="ph ph-shield-check" style="font-size: 20px; color: #00f5c4;"></i>
-                    <span><strong>Escudo Anti-Golpe Sentinel:</strong> Suas conversas são protegidas e blindadas contra vazamentos.</span>
+                    <i class="ph ph-shield-check" style="font-size: 18px; color: #00f5c4; flex-shrink: 0;"></i>
+                    <span><strong>Escudo Anti-Golpe:</strong> Conversas blindadas contra vazamentos.</span>
                 </div>
             </div>
 
             <!-- POPUP: EMOJIS & GIFS -->
             <div class="popup-panel" id="emoji-panel">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;">
-                    <div style="display: flex; gap: 12px;">
-                        <button onclick="switchEmojiTab('emojis')" id="btn-tab-emojis" style="background: none; border: none; color: var(--social-green); font-weight: bold; cursor: pointer; font-size: 13px;">😀 Emojis</button>
-                        <button onclick="switchEmojiTab('gifs')" id="btn-tab-gifs" style="background: none; border: none; color: var(--text-muted); font-weight: bold; cursor: pointer; font-size: 13px;">🎬 GIFs (Tenor)</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px;">
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="switchEmojiTab('emojis')" id="btn-tab-emojis" style="background: none; border: none; color: var(--social-green); font-weight: bold; cursor: pointer; font-size: 12px;">😀 Emojis</button>
+                        <button onclick="switchEmojiTab('gifs')" id="btn-tab-gifs" style="background: none; border: none; color: var(--text-muted); font-weight: bold; cursor: pointer; font-size: 12px;">🎬 GIFs (Tenor)</button>
                     </div>
-                    <span onclick="togglePanel('emoji-panel')" style="cursor: pointer; color: var(--text-muted); font-size: 12px;">✕ Fechar</span>
+                    <span onclick="togglePanel('emoji-panel')" style="cursor: pointer; color: var(--text-muted); font-size: 11px;">✕ Fechar</span>
                 </div>
                 
                 <!-- SUB-TAB 1: EMOJIS -->
@@ -547,12 +571,12 @@ const String kFalaBrasilMasterHtml = r"""
 
                 <!-- SUB-TAB 2: GIFS SEARCH -->
                 <div id="subtab-gifs" style="display: none;">
-                    <input type="text" id="gif-search-input" placeholder="🔍 Pesquisar GIFs no Tenor..." oninput="searchGifs(this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: #2a3942; border: none; color: white; font-size: 13px; outline: none; margin-bottom: 8px;">
-                    <div id="gif-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; max-height: 160px; overflow-y: auto;">
-                        <img src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
-                        <img src="https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
-                        <img src="https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
-                        <img src="https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                    <input type="text" id="gif-search-input" placeholder="🔍 Pesquisar GIFs no Tenor..." oninput="searchGifs(this.value)" style="width: 100%; padding: 6px 10px; border-radius: 6px; background: #2a3942; border: none; color: white; font-size: 12px; outline: none; margin-bottom: 6px;">
+                    <div id="gif-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; max-height: 150px; overflow-y: auto;">
+                        <img src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                        <img src="https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                        <img src="https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                        <img src="https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer;">
                     </div>
                 </div>
             </div>
@@ -562,27 +586,27 @@ const String kFalaBrasilMasterHtml = r"""
                 <div class="attach-grid">
                     <div class="attach-item" onclick="triggerCamera()">
                         <div class="attach-icon" style="background: #e91e63;"><i class="ph ph-camera"></i></div>
-                        <span style="font-size: 11px;">Câmera</span>
+                        <span style="font-size: 10.5px;">Câmera</span>
                     </div>
                     <div class="attach-item" onclick="triggerMediaUpload()">
                         <div class="attach-icon" style="background: #9c27b0;"><i class="ph ph-image"></i></div>
-                        <span style="font-size: 11px;">Fotos & Vídeos</span>
+                        <span style="font-size: 10.5px;">Fotos/Vídeos</span>
                     </div>
                     <div class="attach-item" onclick="triggerDocUpload()">
                         <div class="attach-icon" style="background: #5c6bc0;"><i class="ph ph-file-text"></i></div>
-                        <span style="font-size: 11px;">Documentos</span>
+                        <span style="font-size: 10.5px;">Documentos</span>
                     </div>
                     <div class="attach-item" onclick="openModalPix()">
                         <div class="attach-icon" style="background: #00f5c4; color: black;"><i class="ph ph-currency-dollar"></i></div>
-                        <span style="font-size: 11px; font-weight: bold; color: #00f5c4;">Fala Pay PIX</span>
+                        <span style="font-size: 10.5px; font-weight: bold; color: #00f5c4;">Fala Pay PIX</span>
                     </div>
                     <div class="attach-item" onclick="sendLocation()">
                         <div class="attach-icon" style="background: #ff9800;"><i class="ph ph-map-pin"></i></div>
-                        <span style="font-size: 11px;">Localização</span>
+                        <span style="font-size: 10.5px;">Localização</span>
                     </div>
                     <div class="attach-item" onclick="switchTab('contacts')">
                         <div class="attach-icon" style="background: #00bcd4;"><i class="ph ph-user"></i></div>
-                        <span style="font-size: 11px;">Contato</span>
+                        <span style="font-size: 10.5px;">Contato</span>
                     </div>
                 </div>
             </div>
@@ -591,10 +615,10 @@ const String kFalaBrasilMasterHtml = r"""
             <div class="input-bar">
                 <button class="action-btn" onclick="togglePanel('emoji-panel')"><i class="ph ph-smiley"></i></button>
                 <button class="action-btn" onclick="togglePanel('attach-panel')"><i class="ph ph-paperclip"></i></button>
-                <button onclick="openModalPix()" style="color: #000; font-weight: 800; font-size: 12px; background: #00f5c4; border: none; border-radius: 14px; padding: 6px 10px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; gap: 3px;" title="Transferir PIX">
+                <button onclick="openModalPix()" style="color: #000; font-weight: 800; font-size: 11px; background: #00f5c4; border: none; border-radius: 12px; padding: 5px 8px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; gap: 2px;" title="Transferir PIX">
                     ⚡ PIX
                 </button>
-                <input type="text" id="msg-input" placeholder="Mensagem criptografada..." onkeypress="handleKeyPress(event)">
+                <input type="text" id="msg-input" placeholder="Mensagem..." onkeypress="handleKeyPress(event)">
                 <button class="action-btn" id="mic-btn" onclick="toggleRecordAudio()"><i class="ph ph-microphone"></i></button>
                 <button class="send-btn" onclick="sendMessage()"><i class="ph ph-paper-plane-right"></i></button>
             </div>
@@ -604,14 +628,14 @@ const String kFalaBrasilMasterHtml = r"""
     <!-- STATUS FULLSCREEN MODAL -->
     <div id="status-modal">
         <div class="status-progress-bar"><div class="status-progress-fill" id="status-fill"></div></div>
-        <div style="padding: 16px; display: flex; justify-content: space-between; align-items: center; color: white;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div class="avatar" style="width: 36px; height: 36px; background: #00f5c4; color: black;" id="status-author-avatar">A</div>
-                <strong id="status-author-name">Autor</strong>
+        <div style="padding: 14px; display: flex; justify-content: space-between; align-items: center; color: white;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="avatar" style="width: 32px; height: 32px; background: #00f5c4; color: black; font-size: 14px;" id="status-author-avatar">A</div>
+                <strong id="status-author-name" style="font-size: 14px;">Autor</strong>
             </div>
-            <i class="ph ph-x" onclick="closeStatusModal()" style="font-size: 24px; cursor: pointer;"></i>
+            <i class="ph ph-x" onclick="closeStatusModal()" style="font-size: 22px; cursor: pointer;"></i>
         </div>
-        <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; font-size: 24px; font-weight: bold; color: white;" id="status-text-content">
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 20px; font-weight: bold; color: white;" id="status-text-content">
             Status do Fala Brasil
         </div>
     </div>
@@ -620,11 +644,11 @@ const String kFalaBrasilMasterHtml = r"""
     <div id="call-overlay">
         <div style="text-align: center;">
             <div class="call-avatar" id="call-avatar-icon">🇧🇷</div>
-            <h2 id="call-title" style="margin-top: 20px; font-weight: 700;">Canal Geral Brasil</h2>
-            <p id="call-status-timer" style="color: var(--social-green); font-size: 14px; margin-top: 6px;">Conectando via Nós DePIN P2P...</p>
+            <h2 id="call-title" style="margin-top: 16px; font-weight: 700; font-size: 18px;">Canal Geral Brasil</h2>
+            <p id="call-status-timer" style="color: var(--social-green); font-size: 13px; margin-top: 4px;">Conectando via Nós DePIN P2P...</p>
         </div>
         
-        <div style="display: flex; gap: 24px;">
+        <div style="display: flex; gap: 20px;">
             <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="showToast('🎤 Microfone silenciado')"><i class="ph ph-microphone-slash"></i></button>
             <button class="call-btn" style="background: rgba(255,255,255,0.15); color: white;" onclick="showToast('🔊 Viva-voz ativado')"><i class="ph ph-speaker-high"></i></button>
             <button class="call-btn" style="background: #ff4b4b; color: white;" onclick="endCall()"><i class="ph ph-phone-disconnect"></i></button>
@@ -700,10 +724,10 @@ const String kFalaBrasilMasterHtml = r"""
             const grid = document.getElementById('gif-grid');
             if (!query) return;
             grid.innerHTML = `
-                <img src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
-                <img src="https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
-                <img src="https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
-                <img src="https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 75px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                <img src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                <img src="https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                <img src="https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer;">
+                <img src="https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif" onclick="sendGif(this.src)" style="width: 100%; height: 70px; object-fit: cover; border-radius: 6px; cursor: pointer;">
             `;
         }
 
@@ -787,6 +811,7 @@ const String kFalaBrasilMasterHtml = r"""
 
         function openModalPix() {
             togglePanel('attach-panel');
+            document.getElementById('options-dropdown').style.display = 'none';
             document.getElementById('modal-pix').style.display = 'flex';
         }
 
@@ -799,7 +824,7 @@ const String kFalaBrasilMasterHtml = r"""
             const bubbleHtml = `
                 <strong>⚡ Fala Pay — Cobrança PIX</strong>
                 <div class="pix-card">
-                    <div style="font-size: 18px; font-weight: bold; color: #00f5c4;">R$ ${valor}</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #00f5c4;">R$ ${valor}</div>
                     <small style="color: var(--text-muted);">Transferência Instantânea Soberana</small>
                     <button class="pix-btn" onclick="showToast('✅ Código PIX de R$ ${valor} Copiado!')">Copiar Código PIX</button>
                 </div>
@@ -918,19 +943,19 @@ const String kFalaBrasilMasterHtml = r"""
                     let contentHtml = '';
                     if (type === 'camera' || type === 'gallery') {
                         contentHtml = `
-                            <img src="${e.target.result}" style="width: 100%; max-width: 250px; border-radius: 8px; display: block; margin-bottom: 4px;">
+                            <img src="${e.target.result}" style="width: 100%; max-width: 230px; border-radius: 8px; display: block; margin-bottom: 4px;">
                             <small style="color: var(--text-muted);">${file.name}</small>
                             <div class="msg-meta">${now} ✓✓</div>
                         `;
                     } else {
                         contentHtml = `
-                            <div style="display: flex; align-items: center; gap: 10px; background: #182229; padding: 8px; border-radius: 8px;">
-                                <i class="ph ph-file-pdf" style="font-size: 28px; color: #ff4b4b;"></i>
+                            <div style="display: flex; align-items: center; gap: 8px; background: #182229; padding: 6px 10px; border-radius: 8px;">
+                                <i class="ph ph-file-pdf" style="font-size: 24px; color: #ff4b4b;"></i>
                                 <div style="flex: 1; min-width: 0;">
-                                    <strong style="font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis;">${file.name}</strong>
-                                    <small style="color: var(--text-muted);">${(file.size / 1024).toFixed(1)} KB</small>
+                                    <strong style="font-size: 12px; display: block; overflow: hidden; text-overflow: ellipsis;">${file.name}</strong>
+                                    <small style="color: var(--text-muted); font-size: 10px;">${(file.size / 1024).toFixed(1)} KB</small>
                                 </div>
-                                <button onclick="showToast('Baixando documento...')" style="background: var(--social-green); color: black; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">Baixar</button>
+                                <button onclick="showToast('Baixando documento...')" style="background: var(--social-green); color: black; border: none; padding: 4px 6px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 10px;">Baixar</button>
                             </div>
                             <div class="msg-meta">${now} ✓✓</div>
                         `;
@@ -947,7 +972,7 @@ const String kFalaBrasilMasterHtml = r"""
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const bubbleHtml = `
                 <strong>📍 Localização em Tempo Real</strong>
-                <div style="background: #182229; border-radius: 8px; padding: 8px; margin-top: 4px; font-size: 12px; color: #00f5c4;">
+                <div style="background: #182229; border-radius: 8px; padding: 6px 10px; margin-top: 4px; font-size: 11.5px; color: #00f5c4;">
                     🗺️ São Paulo, SP (Coordenadas Soberanas Seguras)
                 </div>
                 <div class="msg-meta">${now} ✓✓</div>
@@ -977,7 +1002,7 @@ const String kFalaBrasilMasterHtml = r"""
                         <div class="chat-name">${c.name}</div>
                         <div class="chat-preview">${c.tel || 'Iniciar conversa soberana'}</div>
                     </div>
-                    <button onclick="inviteContact('${c.name}', '${c.tel}')" style="background: rgba(0,245,196,0.15); border: 1px solid var(--social-green); color: var(--social-green); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; flex-shrink: 0;">
+                    <button onclick="inviteContact('${c.name}', '${c.tel}')" style="background: rgba(0,245,196,0.15); border: 1px solid var(--social-green); color: var(--social-green); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; flex-shrink: 0;">
                         Convidar 💬
                     </button>
                 `;
@@ -993,22 +1018,24 @@ const String kFalaBrasilMasterHtml = r"""
             inviteCard.style.background = 'rgba(0, 245, 196, 0.1)';
             inviteCard.style.borderColor = 'var(--social-green)';
             inviteCard.innerHTML = `
-                <div style="flex: 1;">
-                    <strong style="color: white; display: block; margin-bottom: 2px;">Convidar ${name} para o Fala Brasil</strong>
-                    <small style="color: var(--text-muted);">Envie um convite via WhatsApp para ele baixar e responder na hora!</small>
+                <div style="flex: 1; min-width: 0;">
+                    <strong style="color: white; display: block; margin-bottom: 2px; font-size: 11.5px;">Convidar ${name} para o Fala Brasil</strong>
+                    <small style="color: var(--text-muted); font-size: 10px;">Envie o convite no WhatsApp para conversar!</small>
                 </div>
-                <button onclick="inviteContact('${name}', '${tel}')" style="background: var(--social-green); color: black; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;">
-                    Enviar Convite 📲
+                <button onclick="inviteContact('${name}', '${tel}')" style="background: var(--social-green); color: black; border: none; padding: 4px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 10.5px; flex-shrink: 0;">
+                    Convidar 📲
                 </button>
             `;
             box.prepend(inviteCard);
         }
 
         function inviteContact(name, tel) {
-            const cleanTel = (tel || '').replace(/\D/g, '');
-            const text = encodeURIComponent(`Olá ${name}! Te mandei uma mensagem segura pelo Fala Brasil. Baixe o app soberano gratuito aqui para me responder: https://auracloud.com.br/falabrasil/`);
-            const whatsappUrl = cleanTel ? `https://api.whatsapp.com/send?phone=${cleanTel}&text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
-            window.open(whatsappUrl, '_blank');
+            const text = `Olá ${name}! Estou te enviando uma mensagem criptografada pelo Fala Brasil. Baixe o app soberano gratuito aqui para me responder: https://auracloud.com.br/falabrasil/`;
+            if (window.NativeAura) {
+                window.NativeAura.postMessage(JSON.stringify({ action: 'shareInvite', text: text, tel: tel || '' }));
+            } else {
+                showToast('📲 Enviando convite...');
+            }
         }
 
         function openScannerNative() {
@@ -1038,8 +1065,8 @@ const String kFalaBrasilMasterHtml = r"""
             const box = document.getElementById('messages-box');
             box.innerHTML = `
                 <div class="security-banner">
-                    <i class="ph ph-shield-check" style="font-size: 20px; color: #00f5c4;"></i>
-                    <span><strong>Escudo Anti-Golpe Sentinel:</strong> Suas conversas são protegidas e blindadas contra vazamentos.</span>
+                    <i class="ph ph-shield-check" style="font-size: 18px; color: #00f5c4; flex-shrink: 0;"></i>
+                    <span><strong>Escudo Anti-Golpe:</strong> Conversas blindadas contra vazamentos.</span>
                 </div>
             `;
             const saved = JSON.parse(localStorage.getItem('fala_history_' + currentRoom) || '[]');
@@ -1096,6 +1123,7 @@ const String kFalaBrasilMasterHtml = r"""
 
         document.addEventListener('DOMContentLoaded', () => {
             loadRoomMessages();
+            setTimeout(fetchNativeContacts, 500);
         });
     </script>
 </body>
