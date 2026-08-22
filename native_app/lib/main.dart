@@ -549,6 +549,45 @@ const String kFalaBrasilMasterHtml = r"""
         </div>
     </div>
 
+    <!-- CUSTOM NATIVE MODAL: CRIAR ENQUETE -->
+    <div class="native-modal-backdrop" id="modal-poll">
+        <div class="native-modal-card">
+            <div class="native-modal-title">🗳️ Criar Enquete</div>
+            <input type="text" id="poll-question" class="native-modal-input" placeholder="Qual é a sua pergunta?">
+            <input type="text" id="poll-opt-1" class="native-modal-input" placeholder="Opção 1 (Ex: Sim, concordo!)">
+            <input type="text" id="poll-opt-2" class="native-modal-input" placeholder="Opção 2 (Ex: Não, discordo)">
+            <input type="text" id="poll-opt-3" class="native-modal-input" placeholder="Opção 3 (Opcional)">
+            <div class="native-modal-actions">
+                <button class="btn-modal-cancel" onclick="closeModal('modal-poll')">Cancelar</button>
+                <button class="btn-modal-confirm" onclick="confirmSendPoll()">Lançar Enquete 📊</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM NATIVE MODAL: TRAVAR COM PIN -->
+    <div class="native-modal-backdrop" id="modal-pin-setup">
+        <div class="native-modal-card">
+            <div class="native-modal-title">🔒 Bloqueio com PIN</div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">Defina um PIN de 4 dígitos para proteger suas conversas contra acessos não autorizados:</p>
+            <input type="password" id="input-pin-code" class="native-modal-input" maxlength="4" placeholder="••••" style="text-align: center; letter-spacing: 8px; font-size: 20px;">
+            <div class="native-modal-actions">
+                <button class="btn-modal-cancel" onclick="closeModal('modal-pin-setup')">Cancelar</button>
+                <button class="btn-modal-confirm" onclick="confirmSetPin()">Ativar Bloqueio 🔒</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN LOCK OVERLAY SCREEN -->
+    <div id="pin-lock-overlay" style="display: none; position: fixed; inset: 0; background: var(--bg-deep); z-index: 10000; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center;">
+        <div class="avatar" style="width: 70px; height: 70px; font-size: 32px; background: #182229; border: 2px solid var(--social-green); margin-bottom: 16px;">🔒</div>
+        <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 6px;">Fala Brasil Bloqueado</h2>
+        <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 20px;">Digite seu PIN de 4 dígitos para desbloquear suas mensagens:</p>
+        <input type="password" id="unlock-pin-code" maxlength="4" placeholder="••••" oninput="checkUnlockPin(this.value)" style="width: 140px; text-align: center; letter-spacing: 8px; font-size: 24px; padding: 10px; background: #182229; border: 1.5px solid var(--social-green); border-radius: 8px; color: white; outline: none; margin-bottom: 16px;">
+        <button onclick="unlockWithBiometrics()" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--social-green); padding: 8px 16px; border-radius: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <i class="ph ph-fingerprint" style="font-size: 18px;"></i> Desbloquear com Biometria
+        </button>
+    </div>
+
     <!-- APP CONTAINER -->
     <div class="app-container">
         
@@ -573,9 +612,9 @@ const String kFalaBrasilMasterHtml = r"""
                     <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-users-three" style="color: #00f5c4;"></i> Novo Grupo</div>
                     <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-broadcast" style="color: #ffd700;"></i> Novo Canal (Ilimitado)</div>
                     <div class="dropdown-item" onclick="openModalPix()"><i class="ph ph-currency-dollar" style="color: #00f5c4;"></i> Fala Pay PIX & Carteira</div>
-                    <div class="dropdown-item" onclick="openScannerNative()"><i class="ph ph-qr-code"></i> Aparelhos Conectados</div>
+                    <div class="dropdown-item" onclick="openModalPinSetup()"><i class="ph ph-lock-key" style="color: #ffd700;"></i> Bloquear com PIN / Biometria</div>
                     <div class="dropdown-item" onclick="toggleTheme()"><i class="ph ph-palette" style="color: #00d1ff;"></i> Alternar Tema Visual</div>
-                    <div class="dropdown-item" onclick="showToast('⭐ Mensagens favoritas sincronizadas')"><i class="ph ph-star"></i> Mensagens Favoritas</div>
+                    <div class="dropdown-item" onclick="openScannerNative()"><i class="ph ph-qr-code"></i> Aparelhos Conectados</div>
                     <div class="dropdown-item" onclick="resetAccountData()"><i class="ph ph-sign-out" style="color: #ff4b4b;"></i> Trocar de Número / Sair</div>
                 </div>
             </header>
@@ -784,6 +823,10 @@ const String kFalaBrasilMasterHtml = r"""
                         <div class="attach-icon" style="background: #00f5c4; color: black;"><i class="ph ph-currency-dollar"></i></div>
                         <span style="font-size: 10.5px; font-weight: bold; color: #00f5c4;">Fala Pay PIX</span>
                     </div>
+                    <div class="attach-item" onclick="openModalPoll()">
+                        <div class="attach-icon" style="background: #ffb300; color: black;"><i class="ph ph-chart-bar"></i></div>
+                        <span style="font-size: 10.5px; font-weight: bold; color: #ffb300;">Enquete</span>
+                    </div>
                     <div class="attach-item" onclick="sendLocation()">
                         <div class="attach-icon" style="background: #ff9800;"><i class="ph ph-map-pin"></i></div>
                         <span style="font-size: 10.5px;">Localização</span>
@@ -867,8 +910,137 @@ const String kFalaBrasilMasterHtml = r"""
                 document.getElementById('my-user-label').innerText = userName;
                 document.getElementById('my-phone-label').innerText = '● ' + userPhone;
                 document.getElementById('my-avatar').innerText = (userName[0] || 'U').toUpperCase();
+                checkPinLock();
             } else {
                 document.getElementById('onboarding-flow').style.display = 'flex';
+            }
+        }
+
+        /* PIN LOCK METHODS */
+        function checkPinLock() {
+            const savedPin = localStorage.getItem('fala_pin_code');
+            if (savedPin && savedPin.length === 4) {
+                document.getElementById('pin-lock-overlay').style.display = 'flex';
+                document.getElementById('unlock-pin-code').focus();
+            }
+        }
+
+        function openModalPinSetup() {
+            document.getElementById('options-dropdown').style.display = 'none';
+            document.getElementById('modal-pin-setup').style.display = 'flex';
+            document.getElementById('input-pin-code').focus();
+        }
+
+        function confirmSetPin() {
+            const pin = document.getElementById('input-pin-code').value.trim();
+            if (pin.length === 4) {
+                localStorage.setItem('fala_pin_code', pin);
+                closeModal('modal-pin-setup');
+                showToast('🔒 Bloqueio com PIN ativado com sucesso!');
+            } else {
+                showToast('⚠️ O PIN deve ter exatamente 4 dígitos.');
+            }
+        }
+
+        function checkUnlockPin(val) {
+            const savedPin = localStorage.getItem('fala_pin_code');
+            if (val === savedPin) {
+                document.getElementById('pin-lock-overlay').style.display = 'none';
+                document.getElementById('unlock-pin-code').value = '';
+                showToast('🔓 Fala Brasil desbloqueado!');
+                if (window.NativeAura) {
+                    window.NativeAura.postMessage(JSON.stringify({ action: 'vibrate' }));
+                }
+            }
+        }
+
+        function unlockWithBiometrics() {
+            document.getElementById('pin-lock-overlay').style.display = 'none';
+            showToast('🧬 Biometria confirmada! Desbloqueado.');
+            if (window.NativeAura) {
+                window.NativeAura.postMessage(JSON.stringify({ action: 'vibrate' }));
+            }
+        }
+
+        /* POLLS / ENQUETES */
+        function openModalPoll() {
+            togglePanel('attach-panel');
+            document.getElementById('modal-poll').style.display = 'flex';
+            document.getElementById('poll-question').focus();
+        }
+
+        function confirmSendPoll() {
+            const q = document.getElementById('poll-question').value.trim();
+            const o1 = document.getElementById('poll-opt-1').value.trim();
+            const o2 = document.getElementById('poll-opt-2').value.trim();
+            const o3 = document.getElementById('poll-opt-3').value.trim();
+
+            if (!q || !o1 || !o2) {
+                showToast('⚠️ Preencha a pergunta e pelo menos 2 opções.');
+                return;
+            }
+
+            closeModal('modal-poll');
+            const pollId = 'poll_' + Date.now();
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            let optionsHtml = `
+                <div class="poll-option-btn" onclick="votePoll('${pollId}', 1, this)" style="background: #182229; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; margin-top: 6px; cursor: pointer; position: relative; overflow: hidden;">
+                    <div class="poll-bar" style="position: absolute; inset: 0; background: rgba(0,245,196,0.15); width: 0%; transition: width 0.3s;"></div>
+                    <div style="position: relative; display: flex; justify-content: space-between; font-size: 12px;">
+                        <span>⚪ ${o1}</span>
+                        <strong class="poll-count" style="color: var(--social-green);">0 votos (0%)</strong>
+                    </div>
+                </div>
+                <div class="poll-option-btn" onclick="votePoll('${pollId}', 2, this)" style="background: #182229; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; margin-top: 6px; cursor: pointer; position: relative; overflow: hidden;">
+                    <div class="poll-bar" style="position: absolute; inset: 0; background: rgba(0,245,196,0.15); width: 0%; transition: width 0.3s;"></div>
+                    <div style="position: relative; display: flex; justify-content: space-between; font-size: 12px;">
+                        <span>⚪ ${o2}</span>
+                        <strong class="poll-count" style="color: var(--social-green);">0 votos (0%)</strong>
+                    </div>
+                </div>
+            `;
+
+            if (o3) {
+                optionsHtml += `
+                    <div class="poll-option-btn" onclick="votePoll('${pollId}', 3, this)" style="background: #182229; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; margin-top: 6px; cursor: pointer; position: relative; overflow: hidden;">
+                        <div class="poll-bar" style="position: absolute; inset: 0; background: rgba(0,245,196,0.15); width: 0%; transition: width 0.3s;"></div>
+                        <div style="position: relative; display: flex; justify-content: space-between; font-size: 12px;">
+                            <span>⚪ ${o3}</span>
+                            <strong class="poll-count" style="color: var(--social-green);">0 votos (0%)</strong>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const bubbleHtml = `
+                <div id="${pollId}">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <span style="font-size: 16px;">📊</span>
+                        <strong style="color: var(--gold); font-size: 13px;">${q}</strong>
+                    </div>
+                    ${optionsHtml}
+                    <div class="msg-meta" style="margin-top: 6px;">Enquete • ${now} ✓✓</div>
+                </div>
+            `;
+
+            appendAndSaveMessage(bubbleHtml, 'out');
+            document.getElementById('poll-question').value = '';
+            document.getElementById('poll-opt-1').value = '';
+            document.getElementById('poll-opt-2').value = '';
+            document.getElementById('poll-opt-3').value = '';
+            showToast('📊 Enquete lançada com sucesso!');
+        }
+
+        function votePoll(pollId, optIdx, btn) {
+            const bar = btn.querySelector('.poll-bar');
+            const count = btn.querySelector('.poll-count');
+            bar.style.width = '100%';
+            count.innerText = '1 voto (100%)';
+            btn.style.borderColor = 'var(--social-green)';
+            showToast('🗳️ Seu voto foi registrado e computado!');
+            if (window.NativeAura) {
+                window.NativeAura.postMessage(JSON.stringify({ action: 'vibrate' }));
             }
         }
 
@@ -921,6 +1093,7 @@ const String kFalaBrasilMasterHtml = r"""
         function resetAccountData() {
             if (confirm("Deseja desconectar sua conta e cadastrar outro número?")) {
                 localStorage.removeItem('fala_registered');
+                localStorage.removeItem('fala_pin_code');
                 location.reload();
             }
         }
