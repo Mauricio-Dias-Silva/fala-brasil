@@ -800,7 +800,7 @@ const String kFalaBrasilMasterHtml = r"""
 
         function finishRegistration() {
             const nameInput = document.getElementById('reg-name');
-            userName = nameInput.value.trim() || 'Usuário Soberano';
+            userName = nameInput.value.trim() || 'Usuário Fala Brasil';
             localStorage.setItem('fala_user_name', userName);
             localStorage.setItem('fala_user_phone', userPhone);
             localStorage.setItem('fala_registered', 'true');
