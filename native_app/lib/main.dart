@@ -160,12 +160,12 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
                       CircularProgressIndicator(color: Color(0xFF00F5C4)),
                       SizedBox(height: 16),
                       Text(
-                        "FALA BRASIL SOBERANO",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 3),
+                        "FALA BRASIL",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 3),
                       ),
                       SizedBox(height: 6),
                       Text(
-                        "Criptografia Ponta a Ponta & IA Nacional",
+                        "Mensagens, Chamadas HD & IA Integrada",
                         style: TextStyle(color: Colors.white54, fontSize: 11),
                       ),
                     ],
@@ -229,6 +229,28 @@ const String kFalaBrasilMasterHtml = r"""
         html, body { background: #000; height: 100%; width: 100vw; max-width: 100vw; display: flex; overflow: hidden; color: var(--text-main); }
         .app-container { width: 100%; height: 100%; display: flex; background: var(--bg-deep); position: relative; overflow: hidden; }
         
+        /* ONBOARDING FLOW (WHATSAPP GRADE) */
+        #onboarding-flow { position: fixed; inset: 0; background: var(--bg-deep); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 40px 24px; }
+        .onboarding-screen { width: 100%; max-width: 360px; display: none; flex-direction: column; align-items: center; text-align: center; height: 100%; justify-content: space-between; }
+        .onboarding-screen.active { display: flex; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .onboarding-hero { width: 100px; height: 100px; border-radius: 50%; background: #182229; border: 2px solid var(--social-green); display: flex; align-items: center; justify-content: center; font-size: 48px; margin-bottom: 20px; box-shadow: 0 0 30px rgba(0,245,196,0.25); }
+        .onboarding-title { font-size: 22px; font-weight: 800; color: white; margin-bottom: 8px; }
+        .onboarding-subtitle { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px; }
+        
+        .onboarding-btn { width: 100%; padding: 14px; background: var(--social-green); color: black; border: none; border-radius: 24px; font-weight: 800; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 16px rgba(0,245,196,0.3); }
+        .onboarding-btn:active { transform: scale(0.98); }
+        
+        .phone-input-group { display: flex; gap: 8px; width: 100%; margin-bottom: 20px; }
+        .phone-ddi { width: 80px; padding: 12px; background: #182229; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--social-green); font-weight: bold; font-size: 15px; text-align: center; }
+        .phone-num { flex: 1; padding: 12px 14px; background: #182229; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; font-size: 16px; outline: none; }
+        .phone-num:focus { border-color: var(--social-green); }
+
+        .otp-inputs { display: flex; gap: 8px; justify-content: center; margin: 20px 0; }
+        .otp-box { width: 44px; height: 50px; background: #182229; border: 1.5px solid rgba(255,255,255,0.15); border-radius: 8px; font-size: 22px; font-weight: bold; color: var(--social-green); text-align: center; outline: none; }
+        .otp-box:focus { border-color: var(--social-green); box-shadow: 0 0 10px rgba(0,245,196,0.3); }
+
         /* SIDEBAR / MAIN TABS */
         #sidebar { width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-deep); z-index: 10; border-right: 1px solid rgba(255,255,255,0.06); overflow: hidden; }
         @media (min-width: 900px) { #sidebar { width: 34%; min-width: 380px; } }
@@ -332,6 +354,77 @@ const String kFalaBrasilMasterHtml = r"""
     <!-- TOAST NOTIFICATION -->
     <div id="toast-notice"></div>
 
+    <!-- ONBOARDING FLOW: REGISTRO VIA CELULAR (ESTILO WHATSAPP) -->
+    <div id="onboarding-flow">
+        
+        <!-- STEP 1: BOAS-VINDAS -->
+        <div class="onboarding-screen active" id="step-welcome">
+            <div style="margin-top: 30px;">
+                <div class="onboarding-hero">🇧🇷</div>
+                <h1 class="onboarding-title">Bem-vindo ao Fala Brasil</h1>
+                <p class="onboarding-subtitle">O aplicativo brasileiro de mensagens rápidas, chamadas em alta definição, PIX e inteligência artificial 24h.</p>
+            </div>
+            <div style="width: 100%; margin-bottom: 20px;">
+                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 16px;">Ao tocar em "Concordar e continuar", você aceita os Termos de Serviço e a Política de Privacidade.</p>
+                <button class="onboarding-btn" onclick="nextOnboardingStep('step-phone')">Concordar e Continuar ➔</button>
+            </div>
+        </div>
+
+        <!-- STEP 2: NÚMERO DO TELEFONE -->
+        <div class="onboarding-screen" id="step-phone">
+            <div style="margin-top: 20px; width: 100%;">
+                <h2 class="onboarding-title" style="font-size: 18px;">Insira seu número de celular</h2>
+                <p class="onboarding-subtitle">O Fala Brasil enviará uma mensagem SMS para verificar seu número de telefone.</p>
+                
+                <div class="phone-input-group">
+                    <div class="phone-ddi">🇧🇷 +55</div>
+                    <input type="tel" id="reg-phone" class="phone-num" placeholder="(11) 98765-4321" maxlength="15" oninput="maskPhone(this)">
+                </div>
+                <small style="color: var(--text-muted); font-size: 11px; display: block;">Seu número é sua conta segura e privada no Fala Brasil.</small>
+            </div>
+            <div style="width: 100%; margin-bottom: 20px;">
+                <button class="onboarding-btn" onclick="requestSmsCode()">Avançar ➔</button>
+            </div>
+        </div>
+
+        <!-- STEP 3: CÓDIGO SMS DE CONFIRMAÇÃO -->
+        <div class="onboarding-screen" id="step-otp">
+            <div style="margin-top: 20px; width: 100%;">
+                <h2 class="onboarding-title" style="font-size: 18px;">Verificando seu número</h2>
+                <p class="onboarding-subtitle" id="otp-phone-label">Aguardando detecção automática de SMS...</p>
+                
+                <div class="otp-inputs">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-1" readonly value="7">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-2" readonly value="4">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-3" readonly value="9">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-4" readonly value="2">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-5" readonly value="1">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-6" readonly value="8">
+                </div>
+                <small style="color: var(--social-green); font-size: 12px; font-weight: bold;">⚡ Código SMS Verificado com Sucesso!</small>
+            </div>
+            <div style="width: 100%; margin-bottom: 20px;">
+                <button class="onboarding-btn" onclick="nextOnboardingStep('step-profile')">Confirmar Código ➔</button>
+            </div>
+        </div>
+
+        <!-- STEP 4: DADOS DO PERFIL -->
+        <div class="onboarding-screen" id="step-profile">
+            <div style="margin-top: 20px; width: 100%;">
+                <h2 class="onboarding-title" style="font-size: 18px;">Dados do Perfil</h2>
+                <p class="onboarding-subtitle">Insira seu nome e foto para que seus amigos reconheçam você.</p>
+                
+                <div class="avatar" style="width: 80px; height: 80px; font-size: 32px; background: #00f5c4; color: black; margin: 0 auto 20px auto; border: 3px solid white;" id="reg-avatar-preview">M</div>
+                
+                <input type="text" id="reg-name" class="native-modal-input" placeholder="Digite seu nome (ex: Mauricio)" value="Mauricio" style="text-align: center; font-size: 15px; font-weight: bold;">
+                <input type="text" id="reg-status-bio" class="native-modal-input" placeholder="Recado (ex: Usando Fala Brasil 🇧🇷)" value="Disponível no Fala Brasil 🇧🇷" style="text-align: center; font-size: 12px;">
+            </div>
+            <div style="width: 100%; margin-bottom: 20px;">
+                <button class="onboarding-btn" onclick="finishRegistration()">Iniciar Fala Brasil 🚀</button>
+            </div>
+        </div>
+    </div>
+
     <!-- HIDDEN REAL FILE INPUTS FOR CAMERA, GALLERY, DOCS -->
     <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleFileUpload(this, 'camera')">
     <input type="file" id="gallery-input" accept="image/*,video/*" multiple style="display:none" onchange="handleFileUpload(this, 'gallery')">
@@ -341,8 +434,8 @@ const String kFalaBrasilMasterHtml = r"""
     <div class="native-modal-backdrop" id="modal-group">
         <div class="native-modal-card">
             <div class="native-modal-title">👥 Criar Novo Grupo</div>
-            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">Capacidade de até 50.000 membros com criptografia soberana.</p>
-            <input type="text" id="input-group-name" class="native-modal-input" placeholder="Nome do Grupo (ex: Família / Univesp)">
+            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">Capacidade de até 50.000 membros com privacidade total.</p>
+            <input type="text" id="input-group-name" class="native-modal-input" placeholder="Nome do Grupo (ex: Família / Trabalho)">
             <div class="native-modal-actions">
                 <button class="btn-modal-cancel" onclick="closeModal('modal-group')">Cancelar</button>
                 <button class="btn-modal-confirm" onclick="confirmCreateGroup()">Criar Grupo 🚀</button>
@@ -385,7 +478,7 @@ const String kFalaBrasilMasterHtml = r"""
                     <div class="avatar" style="background: #00f5c4; color: black; font-weight: bold; width: 34px; height: 34px; font-size: 16px;" id="my-avatar">U</div>
                     <div>
                         <strong id="my-user-label" style="font-size: 13.5px;">Fala Brasil</strong>
-                        <small style="display: block; color: #00f5c4; font-size: 9.5px;">● Soberano E2EE</small>
+                        <small id="my-phone-label" style="display: block; color: #00f5c4; font-size: 9.5px;">● +55 (11) 98765-4321</small>
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px; font-size: 18px; color: var(--text-muted);">
@@ -401,7 +494,7 @@ const String kFalaBrasilMasterHtml = r"""
                     <div class="dropdown-item" onclick="openModalPix()"><i class="ph ph-currency-dollar" style="color: #00f5c4;"></i> Fala Pay PIX & Carteira</div>
                     <div class="dropdown-item" onclick="openScannerNative()"><i class="ph ph-qr-code"></i> Aparelhos Conectados</div>
                     <div class="dropdown-item" onclick="showToast('⭐ Mensagens favoritas sincronizadas')"><i class="ph ph-star"></i> Mensagens Favoritas</div>
-                    <div class="dropdown-item" onclick="showToast('🔒 Criptografia P2P e Sentinel Ativos')"><i class="ph ph-shield-check" style="color: #00f5c4;"></i> Privacidade & Segurança</div>
+                    <div class="dropdown-item" onclick="resetAccountData()"><i class="ph ph-sign-out" style="color: #ff4b4b;"></i> Trocar de Número / Sair</div>
                 </div>
             </header>
 
@@ -656,12 +749,78 @@ const String kFalaBrasilMasterHtml = r"""
     </div>
 
     <script>
-        let userName = localStorage.getItem('fala_user') || 'Mauricio';
+        let userName = localStorage.getItem('fala_user_name') || 'Mauricio';
+        let userPhone = localStorage.getItem('fala_user_phone') || '+55 (11) 98765-4321';
         let currentRoom = 'geral';
         let isTranslatorActive = false;
         let isRecording = false;
         let callTimerInterval = null;
         let callSeconds = 0;
+
+        function checkRegistration() {
+            const isRegistered = localStorage.getItem('fala_registered') === 'true';
+            if (isRegistered) {
+                document.getElementById('onboarding-flow').style.display = 'none';
+                document.getElementById('my-user-label').innerText = userName;
+                document.getElementById('my-phone-label').innerText = '● ' + userPhone;
+                document.getElementById('my-avatar').innerText = (userName[0] || 'U').toUpperCase();
+            } else {
+                document.getElementById('onboarding-flow').style.display = 'flex';
+            }
+        }
+
+        function nextOnboardingStep(stepId) {
+            document.querySelectorAll('.onboarding-screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+        }
+
+        function maskPhone(input) {
+            let v = input.value.replace(/\D/g, '');
+            if (v.length > 11) v = v.substring(0, 11);
+            if (v.length > 6) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2,7)}-${v.substring(7)}`;
+            } else if (v.length > 2) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2)}`;
+            } else {
+                input.value = v;
+            }
+        }
+
+        function requestSmsCode() {
+            const phoneInput = document.getElementById('reg-phone');
+            const num = phoneInput.value.trim();
+            if (num.length < 10) {
+                alert('Por favor, digite um número de celular válido com DDD.');
+                return;
+            }
+            userPhone = '+55 ' + num;
+            document.getElementById('otp-phone-label').innerText = `Código SMS enviado para ${userPhone}`;
+            nextOnboardingStep('step-otp');
+        }
+
+        function finishRegistration() {
+            const nameInput = document.getElementById('reg-name');
+            userName = nameInput.value.trim() || 'Usuário Soberano';
+            localStorage.setItem('fala_user_name', userName);
+            localStorage.setItem('fala_user_phone', userPhone);
+            localStorage.setItem('fala_registered', 'true');
+
+            document.getElementById('onboarding-flow').style.display = 'none';
+            document.getElementById('my-user-label').innerText = userName;
+            document.getElementById('my-phone-label').innerText = '● ' + userPhone;
+            document.getElementById('my-avatar').innerText = (userName[0] || 'U').toUpperCase();
+            
+            showToast(`🎉 Bem-vindo ao Fala Brasil, ${userName}!`);
+            loadRoomMessages();
+            setTimeout(fetchNativeContacts, 500);
+        }
+
+        function resetAccountData() {
+            if (confirm("Deseja desconectar sua conta e cadastrar outro número?")) {
+                localStorage.removeItem('fala_registered');
+                location.reload();
+            }
+        }
 
         function showToast(text) {
             const toast = document.getElementById('toast-notice');
@@ -1122,8 +1281,7 @@ const String kFalaBrasilMasterHtml = r"""
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadRoomMessages();
-            setTimeout(fetchNativeContacts, 500);
+            checkRegistration();
         });
     </script>
 </body>
