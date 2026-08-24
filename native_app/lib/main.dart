@@ -429,6 +429,20 @@ const String kFalaBrasilMasterHtml = r"""
         /* TOAST NOTIFICATION */
         #toast-notice { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #00f5c4; color: black; font-weight: bold; font-size: 11.5px; padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 4000; display: none; animation: slideUp 0.2s ease; white-space: nowrap; }
     </style>
+    <script>
+        window.nextOnboardingStep = function(stepId) {
+            var screens = document.querySelectorAll('.onboarding-screen');
+            for (var i = 0; i < screens.length; i++) {
+                screens[i].classList.remove('active');
+                screens[i].style.setProperty('display', 'none', 'important');
+            }
+            var target = document.getElementById(stepId);
+            if (target) {
+                target.classList.add('active');
+                target.style.setProperty('display', 'flex', 'important');
+            }
+        };
+    </script>
 </head>
 <body>
 
