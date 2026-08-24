@@ -1083,18 +1083,28 @@ const String kFalaBrasilMasterHtml = r"""
 
         function checkRegistration() {
             const isRegistered = localStorage.getItem('fala_registered') === 'true';
+            const flow = document.getElementById('onboarding-flow');
             if (isRegistered) {
                 userName = localStorage.getItem('fala_user_name') || 'Usuário';
                 userPhone = localStorage.getItem('fala_user_phone') || '+55 (11) 99999-0000';
-                document.getElementById('onboarding-flow').style.display = 'none';
-                document.getElementById('my-user-label').innerText = userName;
-                document.getElementById('my-phone-label').innerText = '● ' + userPhone;
-                document.getElementById('my-avatar').innerText = (userName[0] || 'U').toUpperCase();
+                if (flow) {
+                    flow.style.setProperty('display', 'none', 'important');
+                    flow.style.pointerEvents = 'none';
+                }
+                const myUser = document.getElementById('my-user-label');
+                if (myUser) myUser.innerText = userName;
+                const myPhone = document.getElementById('my-phone-label');
+                if (myPhone) myPhone.innerText = '● ' + userPhone;
+                const myAvatar = document.getElementById('my-avatar');
+                if (myAvatar) myAvatar.innerText = (userName[0] || 'U').toUpperCase();
                 checkPinLock();
                 initRealtimeRelay();
             } else {
-                document.getElementById('onboarding-flow').style.display = 'flex';
-                nextOnboardingStep('step-welcome');
+                if (flow) {
+                    flow.style.setProperty('display', 'flex', 'important');
+                    flow.style.pointerEvents = 'auto';
+                }
+                window.nextOnboardingStep('step-welcome');
             }
         }
 
@@ -1233,84 +1243,7 @@ const String kFalaBrasilMasterHtml = r"""
             }
         }
 
-        function nextOnboardingStep(stepId) {
-            document.querySelectorAll('.onboarding-screen').forEach(s => {
-                s.classList.remove('active');
-                s.style.display = 'none';
-            });
-            const target = document.getElementById(stepId);
-            if (target) {
-                target.classList.add('active');
-                target.style.display = 'flex';
-            }
-        }
 
-        function maskPhone(input) {
-            let v = input.value.replace(/\D/g, '');
-            if (v.length > 11) v = v.substring(0, 11);
-            if (v.length > 6) {
-                input.value = `(${v.substring(0,2)}) ${v.substring(2,7)}-${v.substring(7)}`;
-            } else if (v.length > 2) {
-                input.value = `(${v.substring(0,2)}) ${v.substring(2)}`;
-            } else {
-                input.value = v;
-            }
-        }
-
-        function requestSmsCode() {
-            const phoneInput = document.getElementById('reg-phone');
-            const num = phoneInput.value.trim();
-            if (num.replace(/\D/g, '').length < 10) {
-                showToast('⚠️ Digite seu número com DDD (ex: 11 99999-8888)');
-                return;
-            }
-            userPhone = '+55 ' + num;
-            currentGeneratedOtp = String(Math.floor(100000 + Math.random() * 900000));
-            document.getElementById('otp-phone-label').innerText = `SMS enviado para ${userPhone}`;
-            document.getElementById('simulated-otp-code').innerText = currentGeneratedOtp;
-            document.getElementById('otp-input-field').value = '';
-            nextOnboardingStep('step-otp');
-            showToast(`📩 Código SMS recebido: ${currentGeneratedOtp}`);
-        }
-
-        function autofillOtp() {
-            document.getElementById('otp-input-field').value = currentGeneratedOtp;
-            verifySmsCode();
-        }
-
-        function verifySmsCode() {
-            const inputVal = document.getElementById('otp-input-field').value.trim();
-            if (inputVal === currentGeneratedOtp || inputVal.length === 6) {
-                nextOnboardingStep('step-profile');
-                showToast('⚡ SMS confirmado com sucesso!');
-            } else {
-                showToast('⚠️ Código SMS incorreto. Digite o código de 6 dígitos.');
-            }
-        }
-
-        function updateAvatarPreview(val) {
-            const letter = val.trim() ? val.trim()[0].toUpperCase() : '🇧🇷';
-            document.getElementById('reg-avatar-preview').innerText = letter;
-        }
-
-        function finishRegistration() {
-            const nameInput = document.getElementById('reg-name');
-            const typedName = nameInput.value.trim();
-            userName = typedName || 'Usuário ' + userPhone.slice(-4);
-            localStorage.setItem('fala_user_name', userName);
-            localStorage.setItem('fala_user_phone', userPhone);
-            localStorage.setItem('fala_registered', 'true');
-
-            document.getElementById('onboarding-flow').style.display = 'none';
-            document.getElementById('my-user-label').innerText = userName;
-            document.getElementById('my-phone-label').innerText = '● ' + userPhone;
-            document.getElementById('my-avatar').innerText = (userName[0] || 'U').toUpperCase();
-            
-            showToast(`🎉 Bem-vindo ao Fala Brasil, ${userName}!`);
-            initRealtimeRelay();
-            loadRoomMessages();
-            setTimeout(fetchNativeContacts, 500);
-        }
 
         function resetAccountData() {
             if (confirm("Deseja desconectar sua conta e cadastrar outro número?")) {
