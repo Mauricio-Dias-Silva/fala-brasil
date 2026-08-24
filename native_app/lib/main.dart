@@ -524,11 +524,25 @@ const String kFalaBrasilMasterHtml = r"""
         </div>
     </div>
 
+    <!-- CUSTOM NATIVE MODAL: CONFIGURAR CHAVE PIX -->
+    <div class="native-modal-backdrop" id="modal-pix-setup">
+        <div class="native-modal-card">
+            <div class="native-modal-title" style="color: #00f5c4;">⚡ Minha Chave PIX</div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">Cadastre sua chave PIX para que os pagamentos caiam diretamente na sua conta bancária:</p>
+            <input type="text" id="input-my-pix-key" class="native-modal-input" placeholder="Chave PIX (Celular, CPF, E-mail ou Aleatória)">
+            <input type="text" id="input-my-pix-city" class="native-modal-input" placeholder="Sua Cidade (ex: SAO PAULO)" value="SAO PAULO">
+            <div class="native-modal-actions">
+                <button class="btn-modal-cancel" onclick="closeModal('modal-pix-setup')">Cancelar</button>
+                <button class="btn-modal-confirm" onclick="confirmSavePixKey()">Salvar Chave 💾</button>
+            </div>
+        </div>
+    </div>
+
     <!-- CUSTOM NATIVE MODAL: FALA PAY PIX -->
     <div class="native-modal-backdrop" id="modal-pix">
         <div class="native-modal-card">
-            <div class="native-modal-title">⚡ Fala Pay — Transferir PIX</div>
-            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">Digite o valor para gerar o card de pagamento no chat:</p>
+            <div class="native-modal-title">⚡ Fala Pay — Cobrar com PIX</div>
+            <p id="pix-dest-label" style="font-size: 11.5px; color: var(--social-green); margin-bottom: 8px;">Receber na sua chave:</p>
             <input type="number" id="input-pix-val" class="native-modal-input" placeholder="Valor em R$ (ex: 50.00)" value="50.00">
             <div class="native-modal-actions">
                 <button class="btn-modal-cancel" onclick="closeModal('modal-pix')">Cancelar</button>
@@ -629,9 +643,10 @@ const String kFalaBrasilMasterHtml = r"""
                 <div id="options-dropdown">
                     <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-users-three" style="color: #00f5c4;"></i> Novo Grupo</div>
                     <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-broadcast" style="color: #ffd700;"></i> Novo Canal (Ilimitado)</div>
-                    <div class="dropdown-item" onclick="openModalPix()"><i class="ph ph-currency-dollar" style="color: #00f5c4;"></i> Fala Pay PIX & Carteira</div>
-                    <div class="dropdown-item" onclick="openModalPinSetup()"><i class="ph ph-lock-key" style="color: #ffd700;"></i> Bloquear com PIN / Biometria</div>
-                    <div class="dropdown-item" onclick="toggleTheme()"><i class="ph ph-palette" style="color: #00d1ff;"></i> Alternar Tema Visual</div>
+                    <div class="dropdown-item" onclick="openModalPix()"><i class="ph ph-currency-dollar" style="color: #00f5c4;"></i> Cobrar com PIX</div>
+                    <div class="dropdown-item" onclick="openModalPixSetup()"><i class="ph ph-qr-code" style="color: #ffd700;"></i> Minha Chave PIX</div>
+                    <div class="dropdown-item" onclick="openModalPinSetup()"><i class="ph ph-lock-key" style="color: #00d1ff;"></i> Bloquear com PIN / Biometria</div>
+                    <div class="dropdown-item" onclick="toggleTheme()"><i class="ph ph-palette" style="color: #e91e63;"></i> Alternar Tema Visual</div>
                     <div class="dropdown-item" onclick="openScannerNative()"><i class="ph ph-qr-code"></i> Aparelhos Conectados</div>
                     <div class="dropdown-item" onclick="resetAccountData()"><i class="ph ph-sign-out" style="color: #ff4b4b;"></i> Trocar de Número / Sair</div>
                 </div>
@@ -1382,24 +1397,111 @@ const String kFalaBrasilMasterHtml = r"""
             showToast(`🎉 Grupo "${groupName}" criado com sucesso!`);
         }
 
+        /* PIX KEY MANAGEMENT & BACEN BR CODE GENERATOR */
+        function openModalPixSetup() {
+            document.getElementById('options-dropdown').style.display = 'none';
+            const savedKey = localStorage.getItem('fala_pix_key') || userPhone.replace(/\D/g, '');
+            const savedCity = localStorage.getItem('fala_pix_city') || 'SAO PAULO';
+            document.getElementById('input-my-pix-key').value = savedKey;
+            document.getElementById('input-my-pix-city').value = savedCity;
+            document.getElementById('modal-pix-setup').style.display = 'flex';
+        }
+
+        function confirmSavePixKey() {
+            const key = document.getElementById('input-my-pix-key').value.trim();
+            const city = document.getElementById('input-my-pix-city').value.trim() || 'SAO PAULO';
+            if (!key) {
+                showToast('⚠️ Digite uma chave PIX válida.');
+                return;
+            }
+            localStorage.setItem('fala_pix_key', key);
+            localStorage.setItem('fala_pix_city', city);
+            closeModal('modal-pix-setup');
+            showToast('✅ Chave PIX salva com sucesso!');
+        }
+
+        function generatePixBRCode(pixKey, merchantName, merchantCity, amount) {
+            function formatEMV(id, value) {
+                const len = String(value.length).padStart(2, '0');
+                return `${id}${len}${value}`;
+            }
+
+            const cleanKey = pixKey.trim();
+            const cleanName = (merchantName || 'Usuario Fala Brasil').normalize('NFD').replace(/[\u0300-\u036f]/g, '').substring(0, 25);
+            const cleanCity = (merchantCity || 'SAO PAULO').normalize('NFD').replace(/[\u0300-\u036f]/g, '').substring(0, 15);
+            const numAmount = amount ? Number(amount).toFixed(2) : '';
+
+            const merchantInfo = formatEMV('00', 'br.gov.bcb.pix') + formatEMV('01', cleanKey);
+            let payload = formatEMV('00', '01') +
+                          formatEMV('26', merchantInfo) +
+                          formatEMV('52', '0000') +
+                          formatEMV('53', '986');
+                          
+            if (numAmount && Number(numAmount) > 0) {
+                payload += formatEMV('54', numAmount);
+            }
+            
+            payload += formatEMV('58', 'BR') +
+                       formatEMV('59', cleanName) +
+                       formatEMV('60', cleanCity) +
+                       formatEMV('62', formatEMV('05', '***')) +
+                       '6304';
+
+            let crc = 0xFFFF;
+            for (let i = 0; i < payload.length; i++) {
+                crc ^= payload.charCodeAt(i) << 8;
+                for (let j = 0; j < 8; j++) {
+                    if ((crc & 0x8000) !== 0) {
+                        crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+                    } else {
+                        crc = (crc << 1) & 0xFFFF;
+                    }
+                }
+            }
+            const crcHex = crc.toString(16).toUpperCase().padStart(4, '0');
+            return payload + crcHex;
+        }
+
+        function copyPixCodeToClipboard(code, val) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = code;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            showToast(`✅ Código PIX de R$ ${val} Copiado! Cole no seu banco.`);
+            if (window.NativeAura) {
+                window.NativeAura.postMessage(JSON.stringify({ action: 'vibrate' }));
+            }
+        }
+
         function openModalPix() {
             togglePanel('attach-panel');
             document.getElementById('options-dropdown').style.display = 'none';
+            const savedKey = localStorage.getItem('fala_pix_key') || userPhone.replace(/\D/g, '');
+            document.getElementById('pix-dest-label').innerText = `Receber na chave: ${savedKey} (${userName})`;
             document.getElementById('modal-pix').style.display = 'flex';
         }
 
         function confirmSendPix() {
             const input = document.getElementById('input-pix-val');
             const valor = input.value.trim() || '50.00';
+            const pixKey = localStorage.getItem('fala_pix_key') || userPhone.replace(/\D/g, '');
+            const pixCity = localStorage.getItem('fala_pix_city') || 'SAO PAULO';
             closeModal('modal-pix');
             
+            const brCode = generatePixBRCode(pixKey, userName, pixCity, valor);
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const bubbleHtml = `
                 <strong>⚡ Fala Pay — Cobrança PIX</strong>
                 <div class="pix-card">
                     <div style="font-size: 16px; font-weight: bold; color: #00f5c4;">R$ ${valor}</div>
-                    <small style="color: var(--text-muted);">Transferência Instantânea Soberana</small>
-                    <button class="pix-btn" onclick="showToast('✅ Código PIX de R$ ${valor} Copiado!')">Copiar Código PIX</button>
+                    <small style="color: var(--text-muted); display: block; margin: 2px 0;">Titular: <strong>${userName}</strong> (${pixKey})</small>
+                    <button class="pix-btn" onclick="copyPixCodeToClipboard('${brCode}', '${valor}')">Copiar Código PIX Oficial</button>
                 </div>
                 <div class="msg-meta">${now} ✓✓</div>
             `;
