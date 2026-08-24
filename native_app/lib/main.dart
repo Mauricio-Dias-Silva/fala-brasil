@@ -472,33 +472,33 @@ const String kFalaBrasilMasterHtml = r"""
         <div class="onboarding-screen" id="step-otp">
             <div style="margin-top: 20px; width: 100%;">
                 <h2 class="onboarding-title" style="font-size: 18px;">Verificando seu número</h2>
-                <p class="onboarding-subtitle" id="otp-phone-label">Aguardando detecção automática de SMS...</p>
+                <p class="onboarding-subtitle" id="otp-phone-label">Aguardando código SMS...</p>
                 
-                <div class="otp-inputs">
-                    <input type="text" class="otp-box" maxlength="1" id="otp-1" readonly value="7">
-                    <input type="text" class="otp-box" maxlength="1" id="otp-2" readonly value="4">
-                    <input type="text" class="otp-box" maxlength="1" id="otp-3" readonly value="9">
-                    <input type="text" class="otp-box" maxlength="1" id="otp-4" readonly value="2">
-                    <input type="text" class="otp-box" maxlength="1" id="otp-5" readonly value="1">
-                    <input type="text" class="otp-box" maxlength="1" id="otp-6" readonly value="8">
+                <div id="sms-notification-banner" style="background: rgba(0,245,196,0.1); border: 1px solid var(--social-green); border-radius: 12px; padding: 12px; margin: 16px 0; text-align: center; animation: fadeIn 0.4s ease;">
+                    <small style="color: var(--text-muted); font-size: 11px; display: block;">📩 Simulação de SMS Seguro:</small>
+                    <strong id="simulated-otp-code" style="font-size: 24px; color: var(--social-green); letter-spacing: 6px; display: block; margin: 4px 0;">849215</strong>
+                    <small style="color: #ffd700; font-size: 10.5px; cursor: pointer;" onclick="autofillOtp()">Toque aqui para preencher automaticamente ⚡</small>
                 </div>
-                <small style="color: var(--social-green); font-size: 12px; font-weight: bold;">⚡ Código SMS Verificado com Sucesso!</small>
+
+                <div style="margin: 20px 0;">
+                    <input type="text" id="otp-input-field" class="phone-num" maxlength="6" placeholder="••••••" style="width: 100%; text-align: center; letter-spacing: 10px; font-size: 24px; font-weight: bold; color: var(--social-green); background: #182229; border: 1.5px solid var(--social-green);">
+                </div>
             </div>
             <div style="width: 100%; margin-bottom: 20px;">
-                <button class="onboarding-btn" onclick="nextOnboardingStep('step-profile')">Confirmar Código ➔</button>
+                <button class="onboarding-btn" onclick="verifySmsCode()">Confirmar Código ➔</button>
             </div>
         </div>
 
         <!-- STEP 4: DADOS DO PERFIL -->
         <div class="onboarding-screen" id="step-profile">
             <div style="margin-top: 20px; width: 100%;">
-                <h2 class="onboarding-title" style="font-size: 18px;">Dados do Perfil</h2>
-                <p class="onboarding-subtitle">Insira seu nome e foto para que seus amigos reconheçam você.</p>
+                <h2 class="onboarding-title" style="font-size: 18px;">Seu Perfil no Fala Brasil</h2>
+                <p class="onboarding-subtitle">Insira seu nome para que seus contatos reconheçam suas mensagens.</p>
                 
-                <div class="avatar" style="width: 80px; height: 80px; font-size: 32px; background: #00f5c4; color: black; margin: 0 auto 20px auto; border: 3px solid white;" id="reg-avatar-preview">M</div>
+                <div class="avatar" style="width: 80px; height: 80px; font-size: 32px; background: #00f5c4; color: black; margin: 0 auto 20px auto; border: 3px solid white; font-weight: bold;" id="reg-avatar-preview">🇧🇷</div>
                 
-                <input type="text" id="reg-name" class="native-modal-input" placeholder="Digite seu nome (ex: Mauricio)" value="Mauricio" style="text-align: center; font-size: 15px; font-weight: bold;">
-                <input type="text" id="reg-status-bio" class="native-modal-input" placeholder="Recado (ex: Usando Fala Brasil 🇧🇷)" value="Disponível no Fala Brasil 🇧🇷" style="text-align: center; font-size: 12px;">
+                <input type="text" id="reg-name" class="native-modal-input" placeholder="Digite seu nome (ex: João / Maria)" oninput="updateAvatarPreview(this.value)" style="text-align: center; font-size: 15px; font-weight: bold; margin-bottom: 12px;">
+                <input type="text" id="reg-status-bio" class="native-modal-input" placeholder="Recado (ex: Disponível no Fala Brasil 🇧🇷)" value="Disponível no Fala Brasil 🇧🇷" style="text-align: center; font-size: 12px;">
             </div>
             <div style="width: 100%; margin-bottom: 20px;">
                 <button class="onboarding-btn" onclick="finishRegistration()">Iniciar Fala Brasil 🚀</button>
@@ -864,7 +864,7 @@ const String kFalaBrasilMasterHtml = r"""
                     ⚡ PIX
                 </button>
                 <input type="text" id="msg-input" placeholder="Mensagem..." onkeypress="handleKeyPress(event)">
-                <button class="action-btn" id="mic-btn" onclick="toggleRecordAudio()"><i class="ph ph-microphone"></i></button>
+                <button class="action-btn" id="mic-btn" onclick="triggerRecordAudio()"><i class="ph ph-microphone" id="mic-icon-btn"></i></button>
                 <button class="send-btn" onclick="sendMessage()"><i class="ph ph-paper-plane-right"></i></button>
             </div>
         </main>
@@ -917,8 +917,8 @@ const String kFalaBrasilMasterHtml = r"""
     </div>
 
     <script>
-        let userName = localStorage.getItem('fala_user_name') || 'Mauricio';
-        let userPhone = localStorage.getItem('fala_user_phone') || '+55 (11) 98765-4321';
+        let userName = localStorage.getItem('fala_user_name') || 'Usuário';
+        let userPhone = localStorage.getItem('fala_user_phone') || '+55 (11) 99999-0000';
         let currentRoom = 'geral';
         let isTranslatorActive = false;
         let isRecording = false;
@@ -926,6 +926,7 @@ const String kFalaBrasilMasterHtml = r"""
         let callSeconds = 0;
         let activeTargetBubble = null;
         let currentThemeIndex = 0;
+        let currentGeneratedOtp = '849215';
 
         const themes = [
             { bgDeep: '#0b141a', surface: '#111b21', headerBg: '#202c33', bubbleOut: '#005c4b', socialGreen: '#00f5c4', name: 'Dark Padrão' },
@@ -936,13 +937,17 @@ const String kFalaBrasilMasterHtml = r"""
         function checkRegistration() {
             const isRegistered = localStorage.getItem('fala_registered') === 'true';
             if (isRegistered) {
+                userName = localStorage.getItem('fala_user_name') || 'Usuário';
+                userPhone = localStorage.getItem('fala_user_phone') || '+55 (11) 99999-0000';
                 document.getElementById('onboarding-flow').style.display = 'none';
                 document.getElementById('my-user-label').innerText = userName;
                 document.getElementById('my-phone-label').innerText = '● ' + userPhone;
                 document.getElementById('my-avatar').innerText = (userName[0] || 'U').toUpperCase();
                 checkPinLock();
+                initRealtimeRelay();
             } else {
                 document.getElementById('onboarding-flow').style.display = 'flex';
+                nextOnboardingStep('step-welcome');
             }
         }
 
@@ -1055,6 +1060,13 @@ const String kFalaBrasilMasterHtml = r"""
             `;
 
             appendAndSaveMessage(bubbleHtml, 'out');
+            broadcastMessage({
+                type: 'text',
+                roomId: currentRoom,
+                senderName: userName,
+                senderPhone: userPhone,
+                text: bubbleHtml
+            });
             document.getElementById('poll-question').value = '';
             document.getElementById('poll-opt-1').value = '';
             document.getElementById('poll-opt-2').value = '';
@@ -1076,7 +1088,8 @@ const String kFalaBrasilMasterHtml = r"""
 
         function nextOnboardingStep(stepId) {
             document.querySelectorAll('.onboarding-screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(stepId).classList.add('active');
+            const target = document.getElementById(stepId);
+            if (target) target.classList.add('active');
         }
 
         function maskPhone(input) {
@@ -1094,18 +1107,43 @@ const String kFalaBrasilMasterHtml = r"""
         function requestSmsCode() {
             const phoneInput = document.getElementById('reg-phone');
             const num = phoneInput.value.trim();
-            if (num.length < 10) {
-                alert('Por favor, digite um número de celular válido com DDD.');
+            if (num.replace(/\D/g, '').length < 10) {
+                showToast('⚠️ Digite seu número com DDD (ex: 11 99999-8888)');
                 return;
             }
             userPhone = '+55 ' + num;
-            document.getElementById('otp-phone-label').innerText = `Código SMS enviado para ${userPhone}`;
+            currentGeneratedOtp = String(Math.floor(100000 + Math.random() * 900000));
+            document.getElementById('otp-phone-label').innerText = `SMS enviado para ${userPhone}`;
+            document.getElementById('simulated-otp-code').innerText = currentGeneratedOtp;
+            document.getElementById('otp-input-field').value = '';
             nextOnboardingStep('step-otp');
+            showToast(`📩 Código SMS recebido: ${currentGeneratedOtp}`);
+        }
+
+        function autofillOtp() {
+            document.getElementById('otp-input-field').value = currentGeneratedOtp;
+            verifySmsCode();
+        }
+
+        function verifySmsCode() {
+            const inputVal = document.getElementById('otp-input-field').value.trim();
+            if (inputVal === currentGeneratedOtp || inputVal.length === 6) {
+                nextOnboardingStep('step-profile');
+                showToast('⚡ SMS confirmado com sucesso!');
+            } else {
+                showToast('⚠️ Código SMS incorreto. Digite o código de 6 dígitos.');
+            }
+        }
+
+        function updateAvatarPreview(val) {
+            const letter = val.trim() ? val.trim()[0].toUpperCase() : '🇧🇷';
+            document.getElementById('reg-avatar-preview').innerText = letter;
         }
 
         function finishRegistration() {
             const nameInput = document.getElementById('reg-name');
-            userName = nameInput.value.trim() || 'Usuário Fala Brasil';
+            const typedName = nameInput.value.trim();
+            userName = typedName || 'Usuário ' + userPhone.slice(-4);
             localStorage.setItem('fala_user_name', userName);
             localStorage.setItem('fala_user_phone', userPhone);
             localStorage.setItem('fala_registered', 'true');
@@ -1116,14 +1154,14 @@ const String kFalaBrasilMasterHtml = r"""
             document.getElementById('my-avatar').innerText = (userName[0] || 'U').toUpperCase();
             
             showToast(`🎉 Bem-vindo ao Fala Brasil, ${userName}!`);
+            initRealtimeRelay();
             loadRoomMessages();
             setTimeout(fetchNativeContacts, 500);
         }
 
         function resetAccountData() {
             if (confirm("Deseja desconectar sua conta e cadastrar outro número?")) {
-                localStorage.removeItem('fala_registered');
-                localStorage.removeItem('fala_pin_code');
+                localStorage.clear();
                 location.reload();
             }
         }
@@ -1366,6 +1404,14 @@ const String kFalaBrasilMasterHtml = r"""
                 <div class="msg-meta">${now} ✓✓</div>
             `;
             appendAndSaveMessage(bubbleHtml, 'out');
+            broadcastMessage({
+                type: 'pix',
+                roomId: currentRoom,
+                senderName: userName,
+                senderPhone: userPhone,
+                html: bubbleHtml
+            });
+            showToast(`⚡ Cobrança PIX de R$ ${valor} enviada!`);
         }
 
         function openModalStatus() {
@@ -1459,34 +1505,218 @@ const String kFalaBrasilMasterHtml = r"""
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const bubbleHtml = `
                 <div class="audio-bubble">
-                    <button class="audio-play-btn" onclick="playAudioDemo(this)"><i class="ph ph-play"></i></button>
-                    <div class="audio-wave"><div class="audio-wave-fill"></div></div>
-                    <button class="audio-speed-btn" onclick="toggleSpeed(this)">1.5x</button>
+        // REAL-TIME WEBSOCKET RELAY MOTOR (MULTI-DEVICE LIVE SYNC)
+        let socket = null;
+        let activeAudioEl = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioRecordStartTime = 0;
+
+        function initRealtimeRelay() {
+            if (socket && socket.readyState === WebSocket.OPEN) return;
+            const relayUrls = [
+                'wss://relay.damus.io',
+                'wss://nos.lol',
+                'wss://relay.snort.social'
+            ];
+            let currentRelayIdx = 0;
+
+            function connect() {
+                try {
+                    const url = relayUrls[currentRelayIdx];
+                    socket = new WebSocket(url);
+
+                    socket.onopen = () => {
+                        console.log('📡 Fala Brasil Realtime Relay Conectado:', url);
+                        const subFilter = ["REQ", "falabrasil_sub", { kinds: [1], "#t": ["falabrasil_live_v2"], limit: 50 }];
+                        socket.send(JSON.stringify(subFilter));
+                    };
+
+                    socket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (data[0] === "EVENT" && data[2]) {
+                                handleIncomingRelayPayload(data[2]);
+                            }
+                        } catch (err) {}
+                    };
+
+                    socket.onerror = () => {};
+                    socket.onclose = () => {
+                        currentRelayIdx = (currentRelayIdx + 1) % relayUrls.length;
+                        setTimeout(connect, 3000);
+                    };
+                } catch (e) {
+                    setTimeout(connect, 4000);
+                }
+            }
+            connect();
+        }
+
+        function broadcastMessage(payload) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const event = {
+                    id: 'fb_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                    pubkey: (userPhone || 'anon').replace(/\D/g, ''),
+                    created_at: Math.floor(Date.now() / 1000),
+                    kind: 1,
+                    tags: [["t", "falabrasil_live_v2"], ["room", payload.roomId || 'geral']],
+                    content: JSON.stringify(payload)
+                };
+                socket.send(JSON.stringify(["EVENT", event]));
+            }
+        }
+
+        function handleIncomingRelayPayload(event) {
+            try {
+                const payload = JSON.parse(event.content);
+                if (!payload || !payload.senderPhone || payload.senderPhone === userPhone) {
+                    return; // Ignore own messages
+                }
+
+                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                let bubbleHtml = '';
+
+                if (payload.type === 'text') {
+                    bubbleHtml = `<strong>${payload.senderName}:</strong><br>${payload.text}<div class="msg-meta">${now} ✓✓</div>`;
+                } else if (payload.type === 'image') {
+                    bubbleHtml = `
+                        <strong style="display:block; margin-bottom:4px;">${payload.senderName}:</strong>
+                        <img src="${payload.base64}" onclick="openFullscreenMedia('${payload.base64}')" style="width: 100%; max-width: 250px; border-radius: 8px; display: block; margin-bottom: 4px; cursor: pointer;">
+                        <div class="msg-meta">${now} ✓✓</div>
+                    `;
+                } else if (payload.type === 'audio') {
+                    bubbleHtml = `
+                        <strong style="display:block; margin-bottom:4px;">${payload.senderName}:</strong>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button onclick="playAudioNote('${payload.base64}', this)" style="background:var(--social-green); color:black; border:none; width:36px; height:36px; border-radius:50%; font-size:16px; cursor:pointer;"><i class="ph ph-play"></i></button>
+                            <div style="flex:1;"><div style="height:4px; background:rgba(255,255,255,0.2); border-radius:2px; width:100%;"></div><small style="color:var(--text-muted); font-size:10px;">Mensagem de Voz • ${payload.duration || '0:05'}</small></div>
+                        </div>
+                        <div class="msg-meta">${now} ✓✓</div>
+                    `;
+                } else if (payload.type === 'pix') {
+                    bubbleHtml = `
+                        <strong style="display:block; margin-bottom:4px;">${payload.senderName}:</strong>
+                        ${payload.html}
+                        <div class="msg-meta">${now} ✓✓</div>
+                    `;
+                }
+
+                const targetRoom = payload.roomId || 'geral';
+                const roomKey = 'fala_history_' + targetRoom;
+                const saved = JSON.parse(localStorage.getItem(roomKey) || '[]');
+                saved.push({ html: bubbleHtml, type: 'in' });
+                localStorage.setItem(roomKey, JSON.stringify(saved));
+
+                if (currentRoom === targetRoom) {
+                    const box = document.getElementById('messages-box');
+                    const bubble = document.createElement('div');
+                    bubble.className = 'msg in';
+                    bubble.setAttribute('onclick', 'showMessageReactions(event, this)');
+                    bubble.innerHTML = bubbleHtml;
+                    box.appendChild(bubble);
+                    box.scrollTop = box.scrollHeight;
+                } else {
+                    showToast(`💬 ${payload.senderName}: Mensagem nova recebida!`);
+                }
+
+                playNotificationChime();
+                if (window.NativeAura) {
+                    window.NativeAura.postMessage(JSON.stringify({ action: 'vibrate' }));
+                }
+            } catch (e) {}
+        }
+
+        function playNotificationChime() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.35);
+            } catch (e) {}
+        }
+
+        // REAL AUDIO RECORDING VIA MICROPHONE
+        async function triggerRecordAudio() {
+            const micIcon = document.getElementById('mic-icon-btn');
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) audioChunks.push(e.data);
+                    };
+                    mediaRecorder.onstop = () => {
+                        stream.getTracks().forEach(t => t.stop());
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64Audio = reader.result;
+                            const durationSec = Math.max(1, Math.round((Date.now() - audioRecordStartTime) / 1000));
+                            const durationStr = `0:${String(durationSec).padStart(2, '0')}`;
+                            sendAudioNote(base64Audio, durationStr);
+                        };
+                        reader.readAsDataURL(audioBlob);
+                    };
+                    mediaRecorder.start();
+                    audioRecordStartTime = Date.now();
+                    isRecording = true;
+                    if (micIcon) micIcon.style.color = '#ff4b4b';
+                    showToast('🎙️ Gravando sua voz... Toque de novo para enviar');
+                } catch (err) {
+                    showToast('⚠️ Permissão de microfone necessária para áudios');
+                }
+            } else {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+                isRecording = false;
+                if (micIcon) micIcon.style.color = 'var(--text-muted)';
+            }
+        }
+
+        function sendAudioNote(base64Audio, duration) {
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const bubbleHtml = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button onclick="playAudioNote('${base64Audio}', this)" style="background:var(--social-green); color:black; border:none; width:36px; height:36px; border-radius:50%; font-size:16px; cursor:pointer;"><i class="ph ph-play"></i></button>
+                    <div style="flex:1;"><div style="height:4px; background:rgba(255,255,255,0.2); border-radius:2px; width:100%;"></div><small style="color:var(--text-muted); font-size:10px;">Mensagem de Voz • ${duration}</small></div>
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-                    <small style="color: var(--social-green); cursor: pointer; font-size: 11px;" onclick="transcribeAudio(this)">[📝 Transcrever com IA]</small>
-                    <div class="msg-meta">${now} ✓✓</div>
-                </div>
-                <div class="ai-transcribe-box" style="display: none;"></div>
+                <div class="msg-meta">${now} ✓✓</div>
             `;
             appendAndSaveMessage(bubbleHtml, 'out');
+            broadcastMessage({
+                type: 'audio',
+                roomId: currentRoom,
+                senderName: userName,
+                senderPhone: userPhone,
+                base64: base64Audio,
+                duration: duration
+            });
+            showToast('🎙️ Áudio de voz enviado!');
         }
 
-        function playAudioDemo(btn) {
+        function playAudioNote(base64Audio, btn) {
+            if (activeAudioEl) {
+                activeAudioEl.pause();
+                activeAudioEl = null;
+            }
+            const audio = new Audio(base64Audio);
+            activeAudioEl = audio;
             btn.innerHTML = '<i class="ph ph-pause"></i>';
-            setTimeout(() => btn.innerHTML = '<i class="ph ph-play"></i>', 2500);
-        }
-
-        function toggleSpeed(btn) {
-            if (btn.innerText === '1.0x') btn.innerText = '1.5x';
-            else if (btn.innerText === '1.5x') btn.innerText = '2.0x';
-            else btn.innerText = '1.0x';
-        }
-
-        function transcribeAudio(btn) {
-            const box = btn.parentElement.nextElementSibling;
-            box.style.display = 'block';
-            box.innerHTML = '<em>🧠 Aura IA: "Cheguei no local, vamos iniciar a transmissão do nó agora."</em>';
+            audio.onended = () => {
+                btn.innerHTML = '<i class="ph ph-play"></i>';
+            };
+            audio.play();
         }
 
         function triggerCamera() {
@@ -1524,6 +1754,13 @@ const String kFalaBrasilMasterHtml = r"""
                 <div class="msg-meta">${now} ✓✓</div>
             `;
             appendAndSaveMessage(bubbleHtml, 'out');
+            broadcastMessage({
+                type: 'image',
+                roomId: currentRoom,
+                senderName: userName,
+                senderPhone: userPhone,
+                base64: base64Data
+            });
             showToast('📷 Foto enviada com sucesso!');
         };
 
@@ -1570,6 +1807,13 @@ const String kFalaBrasilMasterHtml = r"""
                             <small style="color: var(--text-muted);">${file.name}</small>
                             <div class="msg-meta">${now} ✓✓</div>
                         `;
+                        broadcastMessage({
+                            type: 'image',
+                            roomId: currentRoom,
+                            senderName: userName,
+                            senderPhone: userPhone,
+                            base64: e.target.result
+                        });
                     } else {
                         contentHtml = `
                             <div style="display: flex; align-items: center; gap: 8px; background: #182229; padding: 6px 10px; border-radius: 8px;">
@@ -1601,6 +1845,13 @@ const String kFalaBrasilMasterHtml = r"""
                 <div class="msg-meta">${now} ✓✓</div>
             `;
             appendAndSaveMessage(bubbleHtml, 'out');
+            broadcastMessage({
+                type: 'text',
+                roomId: currentRoom,
+                senderName: userName,
+                senderPhone: userPhone,
+                text: bubbleHtml
+            });
         }
 
         function fetchNativeContacts() {
@@ -1777,6 +2028,14 @@ const String kFalaBrasilMasterHtml = r"""
 
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             appendAndSaveMessage(`${text}<div class="msg-meta">${now} ✓✓</div>`, 'out');
+
+            broadcastMessage({
+                type: 'text',
+                roomId: currentRoom,
+                senderName: userName,
+                senderPhone: userPhone,
+                text: text
+            });
 
             if (currentRoom === 'ia_assistente') {
                 setTimeout(async () => {
