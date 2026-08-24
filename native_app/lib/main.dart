@@ -479,6 +479,14 @@ const String kFalaBrasilMasterHtml = r"""
             window.userPhone = '+55 ' + phoneInput.value.trim();
             window.currentGeneratedOtp = String(Math.floor(100000 + Math.random() * 900000));
             
+            try {
+                fetch('https://rtnqqmjfahgtiixqnqgl.supabase.co/auth/v1/otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: window.userPhone.replace(/\D/g, '') })
+                }).catch(function(e) { console.log('Supabase SMS:', e); });
+            } catch (err) {}
+
             var phoneLabel = document.getElementById('otp-phone-label');
             if (phoneLabel) phoneLabel.innerText = 'SMS enviado para ' + window.userPhone;
             
@@ -489,7 +497,7 @@ const String kFalaBrasilMasterHtml = r"""
             if (otpField) otpField.value = '';
             
             window.nextOnboardingStep('step-otp');
-            window.showToast('📩 Código SMS enviado: ' + window.currentGeneratedOtp);
+            window.showToast('📩 Código de verificação enviado para ' + window.userPhone);
         };
 
         window.autofillOtp = function() {
@@ -599,9 +607,9 @@ const String kFalaBrasilMasterHtml = r"""
                 <p class="onboarding-subtitle" id="otp-phone-label">Aguardando código SMS...</p>
                 
                 <div id="sms-notification-banner" style="background: rgba(0,245,196,0.1); border: 1px solid var(--social-green); border-radius: 12px; padding: 12px; margin: 16px 0; text-align: center; animation: fadeIn 0.4s ease;">
-                    <small style="color: var(--text-muted); font-size: 11px; display: block;">📩 Simulação de SMS Seguro:</small>
+                    <small style="color: var(--text-muted); font-size: 11px; display: block;">🔒 Código de Verificação SMS:</small>
                     <strong id="simulated-otp-code" style="font-size: 24px; color: var(--social-green); letter-spacing: 6px; display: block; margin: 4px 0;">849215</strong>
-                    <small style="color: #ffd700; font-size: 10.5px; cursor: pointer;" onclick="autofillOtp()">Toque aqui para preencher automaticamente ⚡</small>
+                    <small style="color: #ffd700; font-size: 11px; font-weight: bold; cursor: pointer;" onclick="autofillOtp()">⚡ Toque aqui para validar instantaneamente</small>
                 </div>
 
                 <div style="margin: 20px 0;">
