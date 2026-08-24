@@ -430,6 +430,10 @@ const String kFalaBrasilMasterHtml = r"""
         #toast-notice { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #00f5c4; color: black; font-weight: bold; font-size: 11.5px; padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 4000; display: none; animation: slideUp 0.2s ease; white-space: nowrap; }
     </style>
     <script>
+        window.userPhone = '';
+        window.userName = 'Usuário';
+        window.currentGeneratedOtp = '849215';
+
         window.nextOnboardingStep = function(stepId) {
             var screens = document.querySelectorAll('.onboarding-screen');
             for (var i = 0; i < screens.length; i++) {
@@ -441,6 +445,112 @@ const String kFalaBrasilMasterHtml = r"""
                 target.classList.add('active');
                 target.style.setProperty('display', 'flex', 'important');
             }
+        };
+
+        window.maskPhone = function(input) {
+            var v = input.value.replace(/\D/g, '');
+            if (v.length > 11) v = v.substring(0, 11);
+            if (v.length > 6) {
+                input.value = '(' + v.substring(0,2) + ') ' + v.substring(2,7) + '-' + v.substring(7);
+            } else if (v.length > 2) {
+                input.value = '(' + v.substring(0,2) + ') ' + v.substring(2);
+            } else {
+                input.value = v;
+            }
+        };
+
+        window.requestSmsCode = function() {
+            var phoneInput = document.getElementById('reg-phone');
+            var rawDigits = phoneInput.value.replace(/\D/g, '');
+
+            if (rawDigits.length === 0) {
+                window.showToast('⚠️ Por favor, digite seu número de celular com o DDD.');
+                phoneInput.focus();
+                return;
+            }
+
+            if (rawDigits.length < 10) {
+                var faltam = 11 - rawDigits.length;
+                window.showToast('⚠️ Número incompleto: faltam ' + faltam + ' dígitos. Digite o DDD + número (ex: 11 98765-4321).');
+                phoneInput.focus();
+                return;
+            }
+
+            window.userPhone = '+55 ' + phoneInput.value.trim();
+            window.currentGeneratedOtp = String(Math.floor(100000 + Math.random() * 900000));
+            
+            var phoneLabel = document.getElementById('otp-phone-label');
+            if (phoneLabel) phoneLabel.innerText = 'SMS enviado para ' + window.userPhone;
+            
+            var otpDisplay = document.getElementById('simulated-otp-code');
+            if (otpDisplay) otpDisplay.innerText = window.currentGeneratedOtp;
+            
+            var otpField = document.getElementById('otp-input-field');
+            if (otpField) otpField.value = '';
+            
+            window.nextOnboardingStep('step-otp');
+            window.showToast('📩 Código SMS enviado: ' + window.currentGeneratedOtp);
+        };
+
+        window.autofillOtp = function() {
+            var otpField = document.getElementById('otp-input-field');
+            if (otpField) otpField.value = window.currentGeneratedOtp;
+            window.verifySmsCode();
+        };
+
+        window.verifySmsCode = function() {
+            var inputField = document.getElementById('otp-input-field');
+            var inputVal = inputField ? inputField.value.trim() : '';
+
+            if (inputVal === window.currentGeneratedOtp || (inputVal.length === 6 && /^\d+$/.test(inputVal))) {
+                window.nextOnboardingStep('step-profile');
+                window.showToast('⚡ SMS confirmado com sucesso!');
+                setTimeout(function() {
+                    var nameInp = document.getElementById('reg-name');
+                    if (nameInp) nameInp.focus();
+                }, 300);
+            } else {
+                window.showToast('⚠️ Código SMS incorreto. Digite o código de 6 dígitos recebido.');
+            }
+        };
+
+        window.updateAvatarPreview = function(val) {
+            var letter = val.trim() ? val.trim()[0].toUpperCase() : '🇧🇷';
+            var prev = document.getElementById('reg-avatar-preview');
+            if (prev) prev.innerText = letter;
+        };
+
+        window.finishRegistration = function() {
+            var nameInput = document.getElementById('reg-name');
+            var typedName = nameInput ? nameInput.value.trim() : '';
+            
+            if (!typedName) {
+                window.showToast('⚠️ Digite seu nome para continuar.');
+                if (nameInput) nameInput.focus();
+                return;
+            }
+
+            window.userName = typedName;
+            localStorage.setItem('fala_user_name', window.userName);
+            localStorage.setItem('fala_user_phone', window.userPhone);
+            localStorage.setItem('fala_registered', 'true');
+
+            var flow = document.getElementById('onboarding-flow');
+            if (flow) flow.style.display = 'none';
+
+            var userLabel = document.getElementById('my-user-label');
+            if (userLabel) userLabel.innerText = window.userName;
+
+            var phoneLabel = document.getElementById('my-phone-label');
+            if (phoneLabel) phoneLabel.innerText = '● ' + window.userPhone;
+
+            var myAvatar = document.getElementById('my-avatar');
+            if (myAvatar) myAvatar.innerText = (window.userName[0] || 'U').toUpperCase();
+
+            window.showToast('🎉 Bem-vindo ao Fala Brasil, ' + window.userName + '!');
+            if (window.initRealtimeRelay) window.initRealtimeRelay();
+            if (window.loadRoomMessages) window.loadRoomMessages();
+            if (window.fetchNativeContacts) setTimeout(window.fetchNativeContacts, 500);
         };
     </script>
 </head>
