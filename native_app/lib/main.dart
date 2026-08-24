@@ -1102,9 +1102,15 @@ const String kFalaBrasilMasterHtml = r"""
         }
 
         function nextOnboardingStep(stepId) {
-            document.querySelectorAll('.onboarding-screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.onboarding-screen').forEach(s => {
+                s.classList.remove('active');
+                s.style.display = 'none';
+            });
             const target = document.getElementById(stepId);
-            if (target) target.classList.add('active');
+            if (target) {
+                target.classList.add('active');
+                target.style.display = 'flex';
+            }
         }
 
         function maskPhone(input) {
