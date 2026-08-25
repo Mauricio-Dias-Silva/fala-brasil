@@ -58,6 +58,7 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
   @override
   void initState() {
     super.initState();
+    _requestAllPermissions();
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0xFF0B141A))
@@ -177,6 +178,18 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
       await Share.share(text);
     } catch (e) {
       await Share.share(text);
+    }
+  }
+
+  Future<void> _requestAllPermissions() async {
+    try {
+      await [
+        Permission.camera,
+        Permission.microphone,
+        Permission.contacts,
+      ].request();
+    } catch (e) {
+      debugPrint("Erro solicitando permissões: $e");
     }
   }
 
@@ -1316,10 +1329,10 @@ const String kFalaBrasilMasterHtml = r"""
 
             if (type === 'video') {
                 toggleCamBtn.style.display = 'block';
-                timerEl.innerText = "Iniciando câmera HD e criptografia P2P...";
+                timerEl.innerText = "Iniciando câmera HD...";
                 try {
                     activeMediaStream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: isFacingUser ? "user" : "environment" },
+                        video: true,
                         audio: true
                     });
                     videoFeed.srcObject = activeMediaStream;
@@ -1327,10 +1340,20 @@ const String kFalaBrasilMasterHtml = r"""
                     avatarIcon.style.display = 'none';
                     timerEl.innerText = "00:00 (Vídeo HD P2P Ativo)";
                 } catch (err) {
-                    console.warn("Camera WebRTC stream fallback:", err);
-                    videoFeed.style.display = 'none';
-                    avatarIcon.style.display = 'flex';
-                    timerEl.innerText = "00:00 (Modo de Áudio HD Opus)";
+                    console.warn("Camera fallback try 1:", err);
+                    try {
+                        activeMediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        videoFeed.srcObject = activeMediaStream;
+                        videoFeed.style.display = 'block';
+                        avatarIcon.style.display = 'none';
+                        timerEl.innerText = "00:00 (Vídeo HD P2P Ativo)";
+                    } catch (err2) {
+                        console.warn("Camera fallback try 2:", err2);
+                        videoFeed.style.display = 'none';
+                        avatarIcon.style.display = 'flex';
+                        timerEl.innerText = "00:00 (Modo de Áudio HD)";
+                        showToast('⚠️ Permita o acesso à Câmera nas configurações');
+                    }
                 }
             } else {
                 toggleCamBtn.style.display = 'none';
