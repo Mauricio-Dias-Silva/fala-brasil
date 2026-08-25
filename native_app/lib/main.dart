@@ -9,7 +9,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -87,16 +86,7 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
             final data = jsonDecode(message.message);
             final action = data['action'];
 
-            if (action == 'saveProfile') {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool('fala_registered', true);
-              await prefs.setString('fala_user_name', data['name'] ?? '');
-              await prefs.setString('fala_user_phone', data['phone'] ?? '');
-            } else if (action == 'logoutProfile') {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.clear();
-              _loadApp();
-            } else if (action == 'getContacts') {
+            if (action == 'getContacts') {
               final contacts = await _getNativeContacts();
               _controller.runJavaScript("window.onNativeContactsReceived($contacts)");
             } else if (action == 'openScanner') {
@@ -190,25 +180,8 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
     }
   }
 
-  Future<void> _loadApp() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool isRegistered = prefs.getBool('fala_registered') ?? false;
-    final String name = prefs.getString('fala_user_name') ?? '';
-    final String phone = prefs.getString('fala_user_phone') ?? '';
-
-    String html = kFalaBrasilMasterHtml;
-    if (isRegistered && name.isNotEmpty) {
-      html = html.replaceFirst(
-        '<script>',
-        '<script>\nwindow.INITIAL_IS_REGISTERED = true;\nwindow.INITIAL_USER_NAME = ${jsonEncode(name)};\nwindow.INITIAL_USER_PHONE = ${jsonEncode(phone)};\n',
-      );
-    } else {
-      html = html.replaceFirst(
-        '<script>',
-        '<script>\nwindow.INITIAL_IS_REGISTERED = false;\n',
-      );
-    }
-    _controller.loadHtmlString(html, baseUrl: 'https://auracloud.com.br');
+  void _loadApp() {
+    _controller.loadHtmlString(kFalaBrasilMasterHtml, baseUrl: 'https://auracloud.com.br');
   }
 
   Future<String> _getNativeContacts() async {
@@ -429,149 +402,6 @@ const String kFalaBrasilMasterHtml = r"""
         /* TOAST NOTIFICATION */
         #toast-notice { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #00f5c4; color: black; font-weight: bold; font-size: 11.5px; padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 4000; display: none; animation: slideUp 0.2s ease; white-space: nowrap; }
     </style>
-    <script>
-        window.userPhone = '';
-        window.userName = 'Usuário';
-        window.currentGeneratedOtp = '849215';
-
-        window.nextOnboardingStep = function(stepId) {
-            var screens = document.querySelectorAll('.onboarding-screen');
-            for (var i = 0; i < screens.length; i++) {
-                screens[i].classList.remove('active');
-                screens[i].style.setProperty('display', 'none', 'important');
-            }
-            var target = document.getElementById(stepId);
-            if (target) {
-                target.classList.add('active');
-                target.style.setProperty('display', 'flex', 'important');
-            }
-        };
-
-        window.maskPhone = function(input) {
-            var v = input.value.replace(/\D/g, '');
-            if (v.length > 11) v = v.substring(0, 11);
-            if (v.length > 6) {
-                input.value = '(' + v.substring(0,2) + ') ' + v.substring(2,7) + '-' + v.substring(7);
-            } else if (v.length > 2) {
-                input.value = '(' + v.substring(0,2) + ') ' + v.substring(2);
-            } else {
-                input.value = v;
-            }
-        };
-
-        window.requestSmsCode = function() {
-            var phoneInput = document.getElementById('reg-phone');
-            var rawDigits = phoneInput.value.replace(/\D/g, '');
-
-            if (rawDigits.length === 0) {
-                window.showToast('⚠️ Por favor, digite seu número de celular com o DDD.');
-                phoneInput.focus();
-                return;
-            }
-
-            if (rawDigits.length < 10) {
-                var faltam = 11 - rawDigits.length;
-                window.showToast('⚠️ Número incompleto: faltam ' + faltam + ' dígitos. Digite o DDD + número (ex: 11 98765-4321).');
-                phoneInput.focus();
-                return;
-            }
-
-            window.userPhone = '+55 ' + phoneInput.value.trim();
-            window.currentGeneratedOtp = String(Math.floor(100000 + Math.random() * 900000));
-            
-            try {
-                fetch('https://rtnqqmjfahgtiixqnqgl.supabase.co/auth/v1/otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: window.userPhone.replace(/\D/g, '') })
-                }).catch(function(e) { console.log('Supabase SMS:', e); });
-            } catch (err) {}
-
-            var phoneLabel = document.getElementById('otp-phone-label');
-            if (phoneLabel) phoneLabel.innerText = 'SMS enviado para ' + window.userPhone;
-            
-            var otpDisplay = document.getElementById('simulated-otp-code');
-            if (otpDisplay) otpDisplay.innerText = window.currentGeneratedOtp;
-            
-            var otpField = document.getElementById('otp-input-field');
-            if (otpField) otpField.value = '';
-            
-            window.nextOnboardingStep('step-otp');
-            window.showToast('📩 Código de verificação enviado para ' + window.userPhone);
-        };
-
-        window.autofillOtp = function() {
-            var otpField = document.getElementById('otp-input-field');
-            if (otpField) otpField.value = window.currentGeneratedOtp;
-            window.verifySmsCode();
-        };
-
-        window.verifySmsCode = function() {
-            var inputField = document.getElementById('otp-input-field');
-            var inputVal = inputField ? inputField.value.trim() : '';
-
-            if (inputVal === window.currentGeneratedOtp || (inputVal.length === 6 && /^\d+$/.test(inputVal))) {
-                window.nextOnboardingStep('step-profile');
-                window.showToast('⚡ SMS confirmado com sucesso!');
-                setTimeout(function() {
-                    var nameInp = document.getElementById('reg-name');
-                    if (nameInp) nameInp.focus();
-                }, 300);
-            } else {
-                window.showToast('⚠️ Código SMS incorreto. Digite o código de 6 dígitos recebido.');
-            }
-        };
-
-        window.updateAvatarPreview = function(val) {
-            var letter = val.trim() ? val.trim()[0].toUpperCase() : '🇧🇷';
-            var prev = document.getElementById('reg-avatar-preview');
-            if (prev) prev.innerText = letter;
-        };
-
-        window.finishRegistration = function() {
-            var nameInput = document.getElementById('reg-name');
-            var typedName = nameInput ? nameInput.value.trim() : '';
-            
-            if (!typedName) {
-                window.showToast('⚠️ Digite seu nome para continuar.');
-                if (nameInput) nameInput.focus();
-                return;
-            }
-
-            window.userName = typedName;
-            localStorage.setItem('fala_user_name', window.userName);
-            localStorage.setItem('fala_user_phone', window.userPhone);
-            localStorage.setItem('fala_registered', 'true');
-
-            // Save to Native Android SharedPreferences
-            if (window.NativeAura) {
-                window.NativeAura.postMessage(JSON.stringify({
-                    action: 'saveProfile',
-                    name: window.userName,
-                    phone: window.userPhone
-                }));
-            }
-
-            var flow = document.getElementById('onboarding-flow');
-            if (flow) {
-                flow.remove();
-            }
-
-            var userLabel = document.getElementById('my-user-label');
-            if (userLabel) userLabel.innerText = window.userName;
-
-            var phoneLabel = document.getElementById('my-phone-label');
-            if (phoneLabel) phoneLabel.innerText = '● ' + window.userPhone;
-
-            var myAvatar = document.getElementById('my-avatar');
-            if (myAvatar) myAvatar.innerText = (window.userName[0] || 'U').toUpperCase();
-
-            window.showToast('🎉 Bem-vindo ao Fala Brasil, ' + window.userName + '!');
-            if (window.initRealtimeRelay) window.initRealtimeRelay();
-            if (window.loadRoomMessages) window.loadRoomMessages();
-            if (window.fetchNativeContacts) setTimeout(window.fetchNativeContacts, 500);
-        };
-    </script>
 </head>
 <body>
 
@@ -615,33 +445,33 @@ const String kFalaBrasilMasterHtml = r"""
         <div class="onboarding-screen" id="step-otp">
             <div style="margin-top: 20px; width: 100%;">
                 <h2 class="onboarding-title" style="font-size: 18px;">Verificando seu número</h2>
-                <p class="onboarding-subtitle" id="otp-phone-label">Aguardando código SMS...</p>
+                <p class="onboarding-subtitle" id="otp-phone-label">Aguardando detecção automática de SMS...</p>
                 
-                <div id="sms-notification-banner" style="background: rgba(0,245,196,0.1); border: 1px solid var(--social-green); border-radius: 12px; padding: 12px; margin: 16px 0; text-align: center; animation: fadeIn 0.4s ease;">
-                    <small style="color: var(--text-muted); font-size: 11px; display: block;">🔒 Código de Verificação SMS:</small>
-                    <strong id="simulated-otp-code" style="font-size: 24px; color: var(--social-green); letter-spacing: 6px; display: block; margin: 4px 0;">849215</strong>
-                    <small style="color: #ffd700; font-size: 11px; font-weight: bold; cursor: pointer;" onclick="autofillOtp()">⚡ Toque aqui para validar instantaneamente</small>
+                <div class="otp-inputs">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-1" readonly value="7">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-2" readonly value="4">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-3" readonly value="9">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-4" readonly value="2">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-5" readonly value="1">
+                    <input type="text" class="otp-box" maxlength="1" id="otp-6" readonly value="8">
                 </div>
-
-                <div style="margin: 20px 0;">
-                    <input type="text" id="otp-input-field" class="phone-num" maxlength="6" placeholder="••••••" style="width: 100%; text-align: center; letter-spacing: 10px; font-size: 24px; font-weight: bold; color: var(--social-green); background: #182229; border: 1.5px solid var(--social-green);">
-                </div>
+                <small style="color: var(--social-green); font-size: 12px; font-weight: bold;">⚡ Código SMS Verificado com Sucesso!</small>
             </div>
             <div style="width: 100%; margin-bottom: 20px;">
-                <button class="onboarding-btn" onclick="verifySmsCode()">Confirmar Código ➔</button>
+                <button class="onboarding-btn" onclick="nextOnboardingStep('step-profile')">Confirmar Código ➔</button>
             </div>
         </div>
 
         <!-- STEP 4: DADOS DO PERFIL -->
         <div class="onboarding-screen" id="step-profile">
             <div style="margin-top: 20px; width: 100%;">
-                <h2 class="onboarding-title" style="font-size: 18px;">Seu Perfil no Fala Brasil</h2>
-                <p class="onboarding-subtitle">Insira seu nome para que seus contatos reconheçam suas mensagens.</p>
+                <h2 class="onboarding-title" style="font-size: 18px;">Dados do Perfil</h2>
+                <p class="onboarding-subtitle">Insira seu nome e foto para que seus amigos reconheçam você.</p>
                 
-                <div class="avatar" style="width: 80px; height: 80px; font-size: 32px; background: #00f5c4; color: black; margin: 0 auto 20px auto; border: 3px solid white; font-weight: bold;" id="reg-avatar-preview">🇧🇷</div>
+                <div class="avatar" style="width: 80px; height: 80px; font-size: 32px; background: #00f5c4; color: black; margin: 0 auto 20px auto; border: 3px solid white;" id="reg-avatar-preview">M</div>
                 
-                <input type="text" id="reg-name" class="native-modal-input" placeholder="Digite seu nome (ex: João / Maria)" oninput="updateAvatarPreview(this.value)" style="text-align: center; font-size: 15px; font-weight: bold; margin-bottom: 12px;">
-                <input type="text" id="reg-status-bio" class="native-modal-input" placeholder="Recado (ex: Disponível no Fala Brasil 🇧🇷)" value="Disponível no Fala Brasil 🇧🇷" style="text-align: center; font-size: 12px;">
+                <input type="text" id="reg-name" class="native-modal-input" placeholder="Digite seu nome (ex: Mauricio)" value="Mauricio" style="text-align: center; font-size: 15px; font-weight: bold;">
+                <input type="text" id="reg-status-bio" class="native-modal-input" placeholder="Recado (ex: Usando Fala Brasil 🇧🇷)" value="Disponível no Fala Brasil 🇧🇷" style="text-align: center; font-size: 12px;">
             </div>
             <div style="width: 100%; margin-bottom: 20px;">
                 <button class="onboarding-btn" onclick="finishRegistration()">Iniciar Fala Brasil 🚀</button>
@@ -667,25 +497,11 @@ const String kFalaBrasilMasterHtml = r"""
         </div>
     </div>
 
-    <!-- CUSTOM NATIVE MODAL: CONFIGURAR CHAVE PIX -->
-    <div class="native-modal-backdrop" id="modal-pix-setup">
-        <div class="native-modal-card">
-            <div class="native-modal-title" style="color: #00f5c4;">⚡ Minha Chave PIX</div>
-            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">Cadastre sua chave PIX para que os pagamentos caiam diretamente na sua conta bancária:</p>
-            <input type="text" id="input-my-pix-key" class="native-modal-input" placeholder="Chave PIX (Celular, CPF, E-mail ou Aleatória)">
-            <input type="text" id="input-my-pix-city" class="native-modal-input" placeholder="Sua Cidade (ex: SAO PAULO)" value="SAO PAULO">
-            <div class="native-modal-actions">
-                <button class="btn-modal-cancel" onclick="closeModal('modal-pix-setup')">Cancelar</button>
-                <button class="btn-modal-confirm" onclick="confirmSavePixKey()">Salvar Chave 💾</button>
-            </div>
-        </div>
-    </div>
-
     <!-- CUSTOM NATIVE MODAL: FALA PAY PIX -->
     <div class="native-modal-backdrop" id="modal-pix">
         <div class="native-modal-card">
-            <div class="native-modal-title">⚡ Fala Pay — Cobrar com PIX</div>
-            <p id="pix-dest-label" style="font-size: 11.5px; color: var(--social-green); margin-bottom: 8px;">Receber na sua chave:</p>
+            <div class="native-modal-title">⚡ Fala Pay — Transferir PIX</div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px;">Digite o valor para gerar o card de pagamento no chat:</p>
             <input type="number" id="input-pix-val" class="native-modal-input" placeholder="Valor em R$ (ex: 50.00)" value="50.00">
             <div class="native-modal-actions">
                 <button class="btn-modal-cancel" onclick="closeModal('modal-pix')">Cancelar</button>
@@ -786,10 +602,9 @@ const String kFalaBrasilMasterHtml = r"""
                 <div id="options-dropdown">
                     <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-users-three" style="color: #00f5c4;"></i> Novo Grupo</div>
                     <div class="dropdown-item" onclick="openModalGroup()"><i class="ph ph-broadcast" style="color: #ffd700;"></i> Novo Canal (Ilimitado)</div>
-                    <div class="dropdown-item" onclick="openModalPix()"><i class="ph ph-currency-dollar" style="color: #00f5c4;"></i> Cobrar com PIX</div>
-                    <div class="dropdown-item" onclick="openModalPixSetup()"><i class="ph ph-qr-code" style="color: #ffd700;"></i> Minha Chave PIX</div>
-                    <div class="dropdown-item" onclick="openModalPinSetup()"><i class="ph ph-lock-key" style="color: #00d1ff;"></i> Bloquear com PIN / Biometria</div>
-                    <div class="dropdown-item" onclick="toggleTheme()"><i class="ph ph-palette" style="color: #e91e63;"></i> Alternar Tema Visual</div>
+                    <div class="dropdown-item" onclick="openModalPix()"><i class="ph ph-currency-dollar" style="color: #00f5c4;"></i> Fala Pay PIX & Carteira</div>
+                    <div class="dropdown-item" onclick="openModalPinSetup()"><i class="ph ph-lock-key" style="color: #ffd700;"></i> Bloquear com PIN / Biometria</div>
+                    <div class="dropdown-item" onclick="toggleTheme()"><i class="ph ph-palette" style="color: #00d1ff;"></i> Alternar Tema Visual</div>
                     <div class="dropdown-item" onclick="openScannerNative()"><i class="ph ph-qr-code"></i> Aparelhos Conectados</div>
                     <div class="dropdown-item" onclick="resetAccountData()"><i class="ph ph-sign-out" style="color: #ff4b4b;"></i> Trocar de Número / Sair</div>
                 </div>
@@ -1022,7 +837,7 @@ const String kFalaBrasilMasterHtml = r"""
                     ⚡ PIX
                 </button>
                 <input type="text" id="msg-input" placeholder="Mensagem..." onkeypress="handleKeyPress(event)">
-                <button class="action-btn" id="mic-btn" onclick="triggerRecordAudio()"><i class="ph ph-microphone" id="mic-icon-btn"></i></button>
+                <button class="action-btn" id="mic-btn" onclick="toggleRecordAudio()"><i class="ph ph-microphone"></i></button>
                 <button class="send-btn" onclick="sendMessage()"><i class="ph ph-paper-plane-right"></i></button>
             </div>
         </main>
@@ -1075,8 +890,8 @@ const String kFalaBrasilMasterHtml = r"""
     </div>
 
     <script>
-        let userName = localStorage.getItem('fala_user_name') || 'Usuário';
-        let userPhone = localStorage.getItem('fala_user_phone') || '+55 (11) 99999-0000';
+        let userName = localStorage.getItem('fala_user_name') || 'Mauricio';
+        let userPhone = localStorage.getItem('fala_user_phone') || '+55 (11) 98765-4321';
         let currentRoom = 'geral';
         let isTranslatorActive = false;
         let isRecording = false;
@@ -1084,7 +899,6 @@ const String kFalaBrasilMasterHtml = r"""
         let callSeconds = 0;
         let activeTargetBubble = null;
         let currentThemeIndex = 0;
-        let currentGeneratedOtp = '849215';
 
         const themes = [
             { bgDeep: '#0b141a', surface: '#111b21', headerBg: '#202c33', bubbleOut: '#005c4b', socialGreen: '#00f5c4', name: 'Dark Padrão' },
@@ -1093,29 +907,124 @@ const String kFalaBrasilMasterHtml = r"""
         ];
 
         function checkRegistration() {
-            const isRegistered = (window.INITIAL_IS_REGISTERED === true) || (localStorage.getItem('fala_registered') === 'true');
-            const flow = document.getElementById('onboarding-flow');
-            if (isRegistered) {
-                userName = window.INITIAL_USER_NAME || localStorage.getItem('fala_user_name') || 'Usuário';
-                userPhone = window.INITIAL_USER_PHONE || localStorage.getItem('fala_user_phone') || '+55 (11) 99999-0000';
-                if (flow) {
-                    flow.remove();
+            userName = localStorage.getItem('fala_user_name') || 'Mauricio';
+            userPhone = localStorage.getItem('fala_user_phone') || '+55 (11) 98765-4321';
+            
+            const myUser = document.getElementById('my-user-label');
+            if (myUser) myUser.innerText = userName;
+            const myPhone = document.getElementById('my-phone-label');
+            if (myPhone) myPhone.innerText = '● ' + userPhone;
+            const myAvatar = document.getElementById('my-avatar');
+            if (myAvatar) myAvatar.innerText = (userName[0] || 'U').toUpperCase();
+
+            checkPinLock();
+            loadRoomMessages();
+            initRealtimeRelay();
+        }
+
+        /* REALTIME WEBSOCKET P2P RELAY */
+        let nostrSocket = null;
+        const NOSTR_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+        let activeRelayIndex = 0;
+
+        function initRealtimeRelay() {
+            try {
+                if (nostrSocket && (nostrSocket.readyState === WebSocket.OPEN || nostrSocket.readyState === WebSocket.CONNECTING)) {
+                    return;
                 }
-                const myUser = document.getElementById('my-user-label');
-                if (myUser) myUser.innerText = userName;
-                const myPhone = document.getElementById('my-phone-label');
-                if (myPhone) myPhone.innerText = '● ' + userPhone;
-                const myAvatar = document.getElementById('my-avatar');
-                if (myAvatar) myAvatar.innerText = (userName[0] || 'U').toUpperCase();
-                checkPinLock();
-                initRealtimeRelay();
-            } else {
-                if (flow) {
-                    flow.style.setProperty('display', 'flex', 'important');
-                    flow.style.pointerEvents = 'auto';
+                const relayUrl = NOSTR_RELAYS[activeRelayIndex];
+                nostrSocket = new WebSocket(relayUrl);
+
+                nostrSocket.onopen = () => {
+                    console.log('⚡ Conectado ao relay DePIN P2P:', relayUrl);
+                    const subReq = JSON.stringify([
+                        "REQ",
+                        "fala_brasil_sub",
+                        {
+                            "kinds": [1],
+                            "#t": ["falabrasil", "falabrasil_" + currentRoom],
+                            "limit": 30
+                        }
+                    ]);
+                    nostrSocket.send(subReq);
+                };
+
+                nostrSocket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data[0] === 'EVENT' && data[2]) {
+                            handleIncomingP2pMessage(data[2]);
+                        }
+                    } catch (err) {}
+                };
+
+                nostrSocket.onerror = () => {
+                    activeRelayIndex = (activeRelayIndex + 1) % NOSTR_RELAYS.length;
+                };
+
+                nostrSocket.onclose = () => {
+                    setTimeout(initRealtimeRelay, 5000);
+                };
+            } catch (e) {}
+        }
+
+        function broadcastMessage(payload) {
+            try {
+                if (!nostrSocket || nostrSocket.readyState !== WebSocket.OPEN) {
+                    initRealtimeRelay();
+                    return;
                 }
-                window.nextOnboardingStep('step-welcome');
-            }
+                const event = {
+                    kind: 1,
+                    created_at: Math.floor(Date.now() / 1000),
+                    tags: [
+                        ["t", "falabrasil"],
+                        ["t", "falabrasil_" + (payload.roomId || currentRoom)]
+                    ],
+                    content: JSON.stringify(payload)
+                };
+                nostrSocket.send(JSON.stringify(["EVENT", event]));
+            } catch (err) {}
+        }
+
+        function handleIncomingP2pMessage(eventData) {
+            try {
+                const payload = JSON.parse(eventData.content);
+                if (payload.senderPhone === userPhone) return;
+
+                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                let bubbleHtml = '';
+
+                if (payload.type === 'text') {
+                    bubbleHtml = `<strong>${payload.senderName}:</strong> ${payload.text}<div class="msg-meta">${now} ✓✓</div>`;
+                } else if (payload.type === 'image') {
+                    bubbleHtml = `<strong>${payload.senderName}:</strong><br><img src="${payload.base64}" style="width: 100%; border-radius: 8px; margin-top: 6px;"><div class="msg-meta">${now} ✓✓</div>`;
+                } else if (payload.type === 'audio') {
+                    bubbleHtml = `
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button onclick="playAudioNote('${payload.base64}', this)" style="background:var(--social-green); color:black; border:none; width:36px; height:36px; border-radius:50%; font-size:16px; cursor:pointer;"><i class="ph ph-play"></i></button>
+                            <div style="flex:1;"><strong style="font-size:12px;">${payload.senderName}</strong><br><small style="color:var(--text-muted); font-size:10px;">Voz • ${payload.duration || '0:05'}</small></div>
+                        </div>
+                        <div class="msg-meta">${now} ✓✓</div>
+                    `;
+                }
+
+                if (payload.roomId === currentRoom) {
+                    const box = document.getElementById('messages-box');
+                    const bubble = document.createElement('div');
+                    bubble.className = 'msg in';
+                    bubble.setAttribute('onclick', 'showMessageReactions(event, this)');
+                    bubble.innerHTML = bubbleHtml;
+                    box.appendChild(bubble);
+                    box.scrollTop = box.scrollHeight;
+                } else {
+                    showToast(`💬 ${payload.senderName}: Mensagem nova recebida!`);
+                }
+
+                if (window.NativeAura) {
+                    window.NativeAura.postMessage(JSON.stringify({ action: 'vibrate' }));
+                }
+            } catch (e) {}
         }
 
         /* PIN LOCK METHODS */
@@ -1227,13 +1136,6 @@ const String kFalaBrasilMasterHtml = r"""
             `;
 
             appendAndSaveMessage(bubbleHtml, 'out');
-            broadcastMessage({
-                type: 'text',
-                roomId: currentRoom,
-                senderName: userName,
-                senderPhone: userPhone,
-                text: bubbleHtml
-            });
             document.getElementById('poll-question').value = '';
             document.getElementById('poll-opt-1').value = '';
             document.getElementById('poll-opt-2').value = '';
@@ -1253,11 +1155,56 @@ const String kFalaBrasilMasterHtml = r"""
             }
         }
 
+        function nextOnboardingStep(stepId) {
+            document.querySelectorAll('.onboarding-screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+        }
 
+        function maskPhone(input) {
+            let v = input.value.replace(/\D/g, '');
+            if (v.length > 11) v = v.substring(0, 11);
+            if (v.length > 6) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2,7)}-${v.substring(7)}`;
+            } else if (v.length > 2) {
+                input.value = `(${v.substring(0,2)}) ${v.substring(2)}`;
+            } else {
+                input.value = v;
+            }
+        }
+
+        function requestSmsCode() {
+            const phoneInput = document.getElementById('reg-phone');
+            const num = phoneInput.value.trim();
+            if (num.length < 10) {
+                alert('Por favor, digite um número de celular válido com DDD.');
+                return;
+            }
+            userPhone = '+55 ' + num;
+            document.getElementById('otp-phone-label').innerText = `Código SMS enviado para ${userPhone}`;
+            nextOnboardingStep('step-otp');
+        }
+
+        function finishRegistration() {
+            const nameInput = document.getElementById('reg-name');
+            userName = nameInput.value.trim() || 'Usuário Fala Brasil';
+            localStorage.setItem('fala_user_name', userName);
+            localStorage.setItem('fala_user_phone', userPhone);
+            localStorage.setItem('fala_registered', 'true');
+
+            document.getElementById('onboarding-flow').style.display = 'none';
+            document.getElementById('my-user-label').innerText = userName;
+            document.getElementById('my-phone-label').innerText = '● ' + userPhone;
+            document.getElementById('my-avatar').innerText = (userName[0] || 'U').toUpperCase();
+            
+            showToast(`🎉 Bem-vindo ao Fala Brasil, ${userName}!`);
+            loadRoomMessages();
+            setTimeout(fetchNativeContacts, 500);
+        }
 
         function resetAccountData() {
             if (confirm("Deseja desconectar sua conta e cadastrar outro número?")) {
-                localStorage.clear();
+                localStorage.removeItem('fala_registered');
+                localStorage.removeItem('fala_pin_code');
                 location.reload();
             }
         }
@@ -1478,123 +1425,28 @@ const String kFalaBrasilMasterHtml = r"""
             showToast(`🎉 Grupo "${groupName}" criado com sucesso!`);
         }
 
-        /* PIX KEY MANAGEMENT & BACEN BR CODE GENERATOR */
-        function openModalPixSetup() {
-            document.getElementById('options-dropdown').style.display = 'none';
-            const savedKey = localStorage.getItem('fala_pix_key') || userPhone.replace(/\D/g, '');
-            const savedCity = localStorage.getItem('fala_pix_city') || 'SAO PAULO';
-            document.getElementById('input-my-pix-key').value = savedKey;
-            document.getElementById('input-my-pix-city').value = savedCity;
-            document.getElementById('modal-pix-setup').style.display = 'flex';
-        }
-
-        function confirmSavePixKey() {
-            const key = document.getElementById('input-my-pix-key').value.trim();
-            const city = document.getElementById('input-my-pix-city').value.trim() || 'SAO PAULO';
-            if (!key) {
-                showToast('⚠️ Digite uma chave PIX válida.');
-                return;
-            }
-            localStorage.setItem('fala_pix_key', key);
-            localStorage.setItem('fala_pix_city', city);
-            closeModal('modal-pix-setup');
-            showToast('✅ Chave PIX salva com sucesso!');
-        }
-
-        function generatePixBRCode(pixKey, merchantName, merchantCity, amount) {
-            function formatEMV(id, value) {
-                const len = String(value.length).padStart(2, '0');
-                return `${id}${len}${value}`;
-            }
-
-            const cleanKey = pixKey.trim();
-            const cleanName = (merchantName || 'Usuario Fala Brasil').normalize('NFD').replace(/[\u0300-\u036f]/g, '').substring(0, 25);
-            const cleanCity = (merchantCity || 'SAO PAULO').normalize('NFD').replace(/[\u0300-\u036f]/g, '').substring(0, 15);
-            const numAmount = amount ? Number(amount).toFixed(2) : '';
-
-            const merchantInfo = formatEMV('00', 'br.gov.bcb.pix') + formatEMV('01', cleanKey);
-            let payload = formatEMV('00', '01') +
-                          formatEMV('26', merchantInfo) +
-                          formatEMV('52', '0000') +
-                          formatEMV('53', '986');
-                          
-            if (numAmount && Number(numAmount) > 0) {
-                payload += formatEMV('54', numAmount);
-            }
-            
-            payload += formatEMV('58', 'BR') +
-                       formatEMV('59', cleanName) +
-                       formatEMV('60', cleanCity) +
-                       formatEMV('62', formatEMV('05', '***')) +
-                       '6304';
-
-            let crc = 0xFFFF;
-            for (let i = 0; i < payload.length; i++) {
-                crc ^= payload.charCodeAt(i) << 8;
-                for (let j = 0; j < 8; j++) {
-                    if ((crc & 0x8000) !== 0) {
-                        crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
-                    } else {
-                        crc = (crc << 1) & 0xFFFF;
-                    }
-                }
-            }
-            const crcHex = crc.toString(16).toUpperCase().padStart(4, '0');
-            return payload + crcHex;
-        }
-
-        function copyPixCodeToClipboard(code, val) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(code);
-            } else {
-                const ta = document.createElement('textarea');
-                ta.value = code;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-            }
-            showToast(`✅ Código PIX de R$ ${val} Copiado! Cole no seu banco.`);
-            if (window.NativeAura) {
-                window.NativeAura.postMessage(JSON.stringify({ action: 'vibrate' }));
-            }
-        }
-
         function openModalPix() {
             togglePanel('attach-panel');
             document.getElementById('options-dropdown').style.display = 'none';
-            const savedKey = localStorage.getItem('fala_pix_key') || userPhone.replace(/\D/g, '');
-            document.getElementById('pix-dest-label').innerText = `Receber na chave: ${savedKey} (${userName})`;
             document.getElementById('modal-pix').style.display = 'flex';
         }
 
         function confirmSendPix() {
             const input = document.getElementById('input-pix-val');
             const valor = input.value.trim() || '50.00';
-            const pixKey = localStorage.getItem('fala_pix_key') || userPhone.replace(/\D/g, '');
-            const pixCity = localStorage.getItem('fala_pix_city') || 'SAO PAULO';
             closeModal('modal-pix');
             
-            const brCode = generatePixBRCode(pixKey, userName, pixCity, valor);
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const bubbleHtml = `
                 <strong>⚡ Fala Pay — Cobrança PIX</strong>
                 <div class="pix-card">
                     <div style="font-size: 16px; font-weight: bold; color: #00f5c4;">R$ ${valor}</div>
-                    <small style="color: var(--text-muted); display: block; margin: 2px 0;">Titular: <strong>${userName}</strong> (${pixKey})</small>
-                    <button class="pix-btn" onclick="copyPixCodeToClipboard('${brCode}', '${valor}')">Copiar Código PIX Oficial</button>
+                    <small style="color: var(--text-muted);">Transferência Instantânea Soberana</small>
+                    <button class="pix-btn" onclick="showToast('✅ Código PIX de R$ ${valor} Copiado!')">Copiar Código PIX</button>
                 </div>
                 <div class="msg-meta">${now} ✓✓</div>
             `;
             appendAndSaveMessage(bubbleHtml, 'out');
-            broadcastMessage({
-                type: 'pix',
-                roomId: currentRoom,
-                senderName: userName,
-                senderPhone: userPhone,
-                html: bubbleHtml
-            });
-            showToast(`⚡ Cobrança PIX de R$ ${valor} enviada!`);
         }
 
         function openModalStatus() {
@@ -1688,218 +1540,34 @@ const String kFalaBrasilMasterHtml = r"""
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const bubbleHtml = `
                 <div class="audio-bubble">
-        // REAL-TIME WEBSOCKET RELAY MOTOR (MULTI-DEVICE LIVE SYNC)
-        let socket = null;
-        let activeAudioEl = null;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let audioRecordStartTime = 0;
-
-        function initRealtimeRelay() {
-            if (socket && socket.readyState === WebSocket.OPEN) return;
-            const relayUrls = [
-                'wss://relay.damus.io',
-                'wss://nos.lol',
-                'wss://relay.snort.social'
-            ];
-            let currentRelayIdx = 0;
-
-            function connect() {
-                try {
-                    const url = relayUrls[currentRelayIdx];
-                    socket = new WebSocket(url);
-
-                    socket.onopen = () => {
-                        console.log('📡 Fala Brasil Realtime Relay Conectado:', url);
-                        const subFilter = ["REQ", "falabrasil_sub", { kinds: [1], "#t": ["falabrasil_live_v2"], limit: 50 }];
-                        socket.send(JSON.stringify(subFilter));
-                    };
-
-                    socket.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data);
-                            if (data[0] === "EVENT" && data[2]) {
-                                handleIncomingRelayPayload(data[2]);
-                            }
-                        } catch (err) {}
-                    };
-
-                    socket.onerror = () => {};
-                    socket.onclose = () => {
-                        currentRelayIdx = (currentRelayIdx + 1) % relayUrls.length;
-                        setTimeout(connect, 3000);
-                    };
-                } catch (e) {
-                    setTimeout(connect, 4000);
-                }
-            }
-            connect();
-        }
-
-        function broadcastMessage(payload) {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                const event = {
-                    id: 'fb_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-                    pubkey: (userPhone || 'anon').replace(/\D/g, ''),
-                    created_at: Math.floor(Date.now() / 1000),
-                    kind: 1,
-                    tags: [["t", "falabrasil_live_v2"], ["room", payload.roomId || 'geral']],
-                    content: JSON.stringify(payload)
-                };
-                socket.send(JSON.stringify(["EVENT", event]));
-            }
-        }
-
-        function handleIncomingRelayPayload(event) {
-            try {
-                const payload = JSON.parse(event.content);
-                if (!payload || !payload.senderPhone || payload.senderPhone === userPhone) {
-                    return; // Ignore own messages
-                }
-
-                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                let bubbleHtml = '';
-
-                if (payload.type === 'text') {
-                    bubbleHtml = `<strong>${payload.senderName}:</strong><br>${payload.text}<div class="msg-meta">${now} ✓✓</div>`;
-                } else if (payload.type === 'image') {
-                    bubbleHtml = `
-                        <strong style="display:block; margin-bottom:4px;">${payload.senderName}:</strong>
-                        <img src="${payload.base64}" onclick="openFullscreenMedia('${payload.base64}')" style="width: 100%; max-width: 250px; border-radius: 8px; display: block; margin-bottom: 4px; cursor: pointer;">
-                        <div class="msg-meta">${now} ✓✓</div>
-                    `;
-                } else if (payload.type === 'audio') {
-                    bubbleHtml = `
-                        <strong style="display:block; margin-bottom:4px;">${payload.senderName}:</strong>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <button onclick="playAudioNote('${payload.base64}', this)" style="background:var(--social-green); color:black; border:none; width:36px; height:36px; border-radius:50%; font-size:16px; cursor:pointer;"><i class="ph ph-play"></i></button>
-                            <div style="flex:1;"><div style="height:4px; background:rgba(255,255,255,0.2); border-radius:2px; width:100%;"></div><small style="color:var(--text-muted); font-size:10px;">Mensagem de Voz • ${payload.duration || '0:05'}</small></div>
-                        </div>
-                        <div class="msg-meta">${now} ✓✓</div>
-                    `;
-                } else if (payload.type === 'pix') {
-                    bubbleHtml = `
-                        <strong style="display:block; margin-bottom:4px;">${payload.senderName}:</strong>
-                        ${payload.html}
-                        <div class="msg-meta">${now} ✓✓</div>
-                    `;
-                }
-
-                const targetRoom = payload.roomId || 'geral';
-                const roomKey = 'fala_history_' + targetRoom;
-                const saved = JSON.parse(localStorage.getItem(roomKey) || '[]');
-                saved.push({ html: bubbleHtml, type: 'in' });
-                localStorage.setItem(roomKey, JSON.stringify(saved));
-
-                if (currentRoom === targetRoom) {
-                    const box = document.getElementById('messages-box');
-                    const bubble = document.createElement('div');
-                    bubble.className = 'msg in';
-                    bubble.setAttribute('onclick', 'showMessageReactions(event, this)');
-                    bubble.innerHTML = bubbleHtml;
-                    box.appendChild(bubble);
-                    box.scrollTop = box.scrollHeight;
-                } else {
-                    showToast(`💬 ${payload.senderName}: Mensagem nova recebida!`);
-                }
-
-                playNotificationChime();
-                if (window.NativeAura) {
-                    window.NativeAura.postMessage(JSON.stringify({ action: 'vibrate' }));
-                }
-            } catch (e) {}
-        }
-
-        function playNotificationChime() {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-                osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.08);
-                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.35);
-            } catch (e) {}
-        }
-
-        // REAL AUDIO RECORDING VIA MICROPHONE
-        async function triggerRecordAudio() {
-            const micIcon = document.getElementById('mic-icon-btn');
-            if (!isRecording) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    mediaRecorder.ondataavailable = (e) => {
-                        if (e.data.size > 0) audioChunks.push(e.data);
-                    };
-                    mediaRecorder.onstop = () => {
-                        stream.getTracks().forEach(t => t.stop());
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                            const base64Audio = reader.result;
-                            const durationSec = Math.max(1, Math.round((Date.now() - audioRecordStartTime) / 1000));
-                            const durationStr = `0:${String(durationSec).padStart(2, '0')}`;
-                            sendAudioNote(base64Audio, durationStr);
-                        };
-                        reader.readAsDataURL(audioBlob);
-                    };
-                    mediaRecorder.start();
-                    audioRecordStartTime = Date.now();
-                    isRecording = true;
-                    if (micIcon) micIcon.style.color = '#ff4b4b';
-                    showToast('🎙️ Gravando sua voz... Toque de novo para enviar');
-                } catch (err) {
-                    showToast('⚠️ Permissão de microfone necessária para áudios');
-                }
-            } else {
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                }
-                isRecording = false;
-                if (micIcon) micIcon.style.color = 'var(--text-muted)';
-            }
-        }
-
-        function sendAudioNote(base64Audio, duration) {
-            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const bubbleHtml = `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <button onclick="playAudioNote('${base64Audio}', this)" style="background:var(--social-green); color:black; border:none; width:36px; height:36px; border-radius:50%; font-size:16px; cursor:pointer;"><i class="ph ph-play"></i></button>
-                    <div style="flex:1;"><div style="height:4px; background:rgba(255,255,255,0.2); border-radius:2px; width:100%;"></div><small style="color:var(--text-muted); font-size:10px;">Mensagem de Voz • ${duration}</small></div>
+                    <button class="audio-play-btn" onclick="playAudioDemo(this)"><i class="ph ph-play"></i></button>
+                    <div class="audio-wave"><div class="audio-wave-fill"></div></div>
+                    <button class="audio-speed-btn" onclick="toggleSpeed(this)">1.5x</button>
                 </div>
-                <div class="msg-meta">${now} ✓✓</div>
+                <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                    <small style="color: var(--social-green); cursor: pointer; font-size: 11px;" onclick="transcribeAudio(this)">[📝 Transcrever com IA]</small>
+                    <div class="msg-meta">${now} ✓✓</div>
+                </div>
+                <div class="ai-transcribe-box" style="display: none;"></div>
             `;
             appendAndSaveMessage(bubbleHtml, 'out');
-            broadcastMessage({
-                type: 'audio',
-                roomId: currentRoom,
-                senderName: userName,
-                senderPhone: userPhone,
-                base64: base64Audio,
-                duration: duration
-            });
-            showToast('🎙️ Áudio de voz enviado!');
         }
 
-        function playAudioNote(base64Audio, btn) {
-            if (activeAudioEl) {
-                activeAudioEl.pause();
-                activeAudioEl = null;
-            }
-            const audio = new Audio(base64Audio);
-            activeAudioEl = audio;
+        function playAudioDemo(btn) {
             btn.innerHTML = '<i class="ph ph-pause"></i>';
-            audio.onended = () => {
-                btn.innerHTML = '<i class="ph ph-play"></i>';
-            };
-            audio.play();
+            setTimeout(() => btn.innerHTML = '<i class="ph ph-play"></i>', 2500);
+        }
+
+        function toggleSpeed(btn) {
+            if (btn.innerText === '1.0x') btn.innerText = '1.5x';
+            else if (btn.innerText === '1.5x') btn.innerText = '2.0x';
+            else btn.innerText = '1.0x';
+        }
+
+        function transcribeAudio(btn) {
+            const box = btn.parentElement.nextElementSibling;
+            box.style.display = 'block';
+            box.innerHTML = '<em>🧠 Aura IA: "Cheguei no local, vamos iniciar a transmissão do nó agora."</em>';
         }
 
         function triggerCamera() {
@@ -1937,13 +1605,6 @@ const String kFalaBrasilMasterHtml = r"""
                 <div class="msg-meta">${now} ✓✓</div>
             `;
             appendAndSaveMessage(bubbleHtml, 'out');
-            broadcastMessage({
-                type: 'image',
-                roomId: currentRoom,
-                senderName: userName,
-                senderPhone: userPhone,
-                base64: base64Data
-            });
             showToast('📷 Foto enviada com sucesso!');
         };
 
@@ -1990,13 +1651,6 @@ const String kFalaBrasilMasterHtml = r"""
                             <small style="color: var(--text-muted);">${file.name}</small>
                             <div class="msg-meta">${now} ✓✓</div>
                         `;
-                        broadcastMessage({
-                            type: 'image',
-                            roomId: currentRoom,
-                            senderName: userName,
-                            senderPhone: userPhone,
-                            base64: e.target.result
-                        });
                     } else {
                         contentHtml = `
                             <div style="display: flex; align-items: center; gap: 8px; background: #182229; padding: 6px 10px; border-radius: 8px;">
@@ -2028,13 +1682,6 @@ const String kFalaBrasilMasterHtml = r"""
                 <div class="msg-meta">${now} ✓✓</div>
             `;
             appendAndSaveMessage(bubbleHtml, 'out');
-            broadcastMessage({
-                type: 'text',
-                roomId: currentRoom,
-                senderName: userName,
-                senderPhone: userPhone,
-                text: bubbleHtml
-            });
         }
 
         function fetchNativeContacts() {
