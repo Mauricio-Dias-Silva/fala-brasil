@@ -244,36 +244,9 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
         _controller.runJavaScript("if (window.handleAndroidBackPress) { window.handleAndroidBackPress(); }");
       },
       child: Scaffold(
+        backgroundColor: const Color(0xFF0B141A),
         body: SafeArea(
-          child: Stack(
-            children: [
-              WebViewWidget(controller: _controller),
-              if (_isLoading)
-                Container(
-                  color: const Color(0xFF0B141A),
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('🇧🇷', style: TextStyle(fontSize: 52)),
-                        SizedBox(height: 20),
-                        CircularProgressIndicator(color: Color(0xFF00F5C4)),
-                        SizedBox(height: 16),
-                        Text(
-                          "FALA BRASIL",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 3),
-                        ),
-                        SizedBox(height: 6),
-                        Text(
-                          "Mensagens, Chamadas HD & IA Integrada",
-                          style: TextStyle(color: Colors.white54, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          child: WebViewWidget(controller: _controller),
         ),
       ),
     );
