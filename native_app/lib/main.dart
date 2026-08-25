@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -86,7 +87,16 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
             final data = jsonDecode(message.message);
             final action = data['action'];
 
-            if (action == 'getContacts') {
+            if (action == 'saveProfile') {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('fala_registered', true);
+              await prefs.setString('fala_user_name', data['name'] ?? '');
+              await prefs.setString('fala_user_phone', data['phone'] ?? '');
+            } else if (action == 'logoutProfile') {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              _loadApp();
+            } else if (action == 'getContacts') {
               final contacts = await _getNativeContacts();
               _controller.runJavaScript("window.onNativeContactsReceived($contacts)");
             } else if (action == 'openScanner') {
@@ -180,8 +190,25 @@ class _MainMessengerScreenState extends State<MainMessengerScreen> {
     }
   }
 
-  void _loadApp() {
-    _controller.loadHtmlString(kFalaBrasilMasterHtml, baseUrl: 'https://auracloud.com.br');
+  Future<void> _loadApp() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool isRegistered = prefs.getBool('fala_registered') ?? false;
+    final String name = prefs.getString('fala_user_name') ?? '';
+    final String phone = prefs.getString('fala_user_phone') ?? '';
+
+    String html = kFalaBrasilMasterHtml;
+    if (isRegistered && name.isNotEmpty) {
+      html = html.replaceFirst(
+        '<script>',
+        '<script>\nwindow.INITIAL_IS_REGISTERED = true;\nwindow.INITIAL_USER_NAME = ${jsonEncode(name)};\nwindow.INITIAL_USER_PHONE = ${jsonEncode(phone)};\n',
+      );
+    } else {
+      html = html.replaceFirst(
+        '<script>',
+        '<script>\nwindow.INITIAL_IS_REGISTERED = false;\n',
+      );
+    }
+    _controller.loadHtmlString(html, baseUrl: 'https://auracloud.com.br');
   }
 
   Future<String> _getNativeContacts() async {
@@ -543,8 +570,19 @@ const String kFalaBrasilMasterHtml = r"""
             localStorage.setItem('fala_user_phone', window.userPhone);
             localStorage.setItem('fala_registered', 'true');
 
+            // Save to Native Android SharedPreferences
+            if (window.NativeAura) {
+                window.NativeAura.postMessage(JSON.stringify({
+                    action: 'saveProfile',
+                    name: window.userName,
+                    phone: window.userPhone
+                }));
+            }
+
             var flow = document.getElementById('onboarding-flow');
-            if (flow) flow.style.display = 'none';
+            if (flow) {
+                flow.remove();
+            }
 
             var userLabel = document.getElementById('my-user-label');
             if (userLabel) userLabel.innerText = window.userName;
@@ -1082,14 +1120,13 @@ const String kFalaBrasilMasterHtml = r"""
         ];
 
         function checkRegistration() {
-            const isRegistered = localStorage.getItem('fala_registered') === 'true';
+            const isRegistered = (window.INITIAL_IS_REGISTERED === true) || (localStorage.getItem('fala_registered') === 'true');
             const flow = document.getElementById('onboarding-flow');
             if (isRegistered) {
-                userName = localStorage.getItem('fala_user_name') || 'Usuário';
-                userPhone = localStorage.getItem('fala_user_phone') || '+55 (11) 99999-0000';
+                userName = window.INITIAL_USER_NAME || localStorage.getItem('fala_user_name') || 'Usuário';
+                userPhone = window.INITIAL_USER_PHONE || localStorage.getItem('fala_user_phone') || '+55 (11) 99999-0000';
                 if (flow) {
-                    flow.style.setProperty('display', 'none', 'important');
-                    flow.style.pointerEvents = 'none';
+                    flow.remove();
                 }
                 const myUser = document.getElementById('my-user-label');
                 if (myUser) myUser.innerText = userName;
